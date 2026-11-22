@@ -29,6 +29,7 @@ function refresh(){
  state.comparison=comparePolicies(state.sku,state.settings,state.seed,state.history);
  state.experiment=monteCarlo(state.sku,state.settings,state.seed,state.trials,state.history);
  state.dirty=false;const dirty=$('#dirtyResults');if(dirty)dirty.hidden=true;
+ $('#exportBtn').disabled=state.loading;$('#ledgerExportBtn').disabled=state.loading;
  $('#sideDataMode').textContent=state.loadedCSV?'Imported CSV':state.mode==='benchmark'?'FreshRetailNet':'Vegetable demo';
  $('#dataBadge').textContent=state.loadedCSV?'IMPORTED CSV':state.mode==='benchmark'?'FRESHRETAILNET-50K':'VEGETABLE DEMONSTRATION';
  workspace?.render();
@@ -291,8 +292,8 @@ function resetScenario(){
  $('#demandRange').value=100;$('#leadRange').value=state.sku.leadTime??1;$('#shelfRange').value=0;$('#shortageRange').value=10;$('#trialRange').value=24;
  state.day=1;settingsFromControls();refresh();toast('Seed and scenario controls reset to the default baseline.');
 }
-function markDirty(){state.dirty=true;const d=$('#dirtyResults');if(d){d.hidden=false;d.textContent='Parameters changed · click Evaluate all policies to update the results.';}}
-function setBusy(busy){state.loading=busy;$('#runBtn').disabled=busy;$('#experimentBtn').disabled=busy;$('#exportBtn').disabled=busy;$('#catalogContext').setAttribute('aria-busy',String(busy));}
+function markDirty(){state.dirty=true;$('#exportBtn').disabled=true;$('#ledgerExportBtn').disabled=true;const d=$('#dirtyResults');if(d){d.hidden=false;d.textContent='Parameters changed · click Evaluate all policies to update the results.';}}
+function setBusy(busy){state.loading=busy;$('#runBtn').disabled=busy;$('#experimentBtn').disabled=busy;$('#replayBtn').disabled=busy;$('#exportBtn').disabled=busy||state.dirty;$('#ledgerExportBtn').disabled=busy||state.dirty;$('#catalogContext').setAttribute('aria-busy',String(busy));}
 function bind(){
  $('#skuSelect').innerHTML=VEGETABLES.map(s=>`<option value="${s.id}">${escapeHTML(s.name)} · ${s.id}</option>`).join('');
  workspace=createWorkspace({state,onMode:setMode,onSelect:selectVegetable,onUpdate:updateVegetable,onReset:resetVegetable});workspace.bind();
