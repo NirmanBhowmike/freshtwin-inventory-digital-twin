@@ -191,7 +191,11 @@ export function monteCarlo(sku,settings={},seed=42,trials=24,inputHistory=null){
  return Object.fromEntries(Object.entries(out).map(([policy,values])=>{
   const costs=values.map(x=>x.cost).sort((a,b)=>a-b),tail=costs.slice(Math.floor(costs.length*.9));
   const cost=mean(costs),stdCost=Math.sqrt(sum(costs.map(x=>(x-cost)**2))/(costs.length-1));
-  return [policy,{cost,fillRate:mean(values.map(x=>x.fillRate)),waste:mean(values.map(x=>x.waste)),cvar90:mean(tail),trials:values.length,stdCost,costCI95:sampleCI(costs),pairedCostBenefit:policy==='adaptive'?{mean:mean(pairedBenefits),ci95:pairedCI}:null}];
+  const costComponents={acquisitionNet:mean(values.map(x=>x.acquisitionNet)),holding:mean(values.map(x=>x.holding)),disposal:mean(values.map(x=>x.disposal)),shortagePenalty:mean(values.map(x=>x.shortagePenalty))};
+  const orderedCosts=values.map(x=>x.cost);
+  const checkpoints=[8,16,32,64,128,256,500,orderedCosts.length].filter((n,i,arr)=>n<=orderedCosts.length&&arr.indexOf(n)===i).sort((a,b)=>a-b);
+  const convergence=checkpoints.map(n=>({trials:n,meanCost:mean(orderedCosts.slice(0,n))}));
+  return [policy,{cost,fillRate:mean(values.map(x=>x.fillRate)),waste:mean(values.map(x=>x.waste)),cvar90:mean(tail),trials:values.length,stdCost,costComponents,convergence,costCI95:sampleCI(costs),pairedCostBenefit:policy==='adaptive'?{mean:mean(pairedBenefits),ci95:pairedCI}:null}];
  }));
 }
 /** Known-truth synthetic evaluation, entirely separate from the genuine benchmark. */
