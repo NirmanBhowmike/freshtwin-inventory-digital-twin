@@ -72,3 +72,12 @@ Read this file first. Check GitHub latest branch/PR/CI status and public Cloudfl
 - Browser QA used Playwright Chromium's `page.set_content` in the restricted local environment with **an explicitly synthetic UI fixture** to test interaction mechanics, not the actual live public catalog. Search/selection/navigation/stockout chart/experiments passed, no JS errors, desktop and mobile within viewport.
 - Local `npm run check` and `npm run build` succeed; 16 tests.
 - **Cloudflare live application behavior remains unverified** until source is merged and public deployed URL is checked. No claim of production data availability before this.
+## v0.4 Phase 1–3 upgrade — 2026-11-22
+- Feature branch: `feat/phases-1-3-validated-vegetable-modes`; draft PR #6. Do **not** assume merged or deployed without confirmation.
+- UI: independent named vegetable demos (ten SKUs), retained attributed 865-ID benchmark, per-product editable inputs, responsive mode switch, source-aware state, request sequencing and in-flight shard caching, scenario reset and stale-parameter notice.
+- Model: FEFO rollout candidate objective; day-by-day conservation; explicit end-of-horizon asset carry-forward for usable closing stock and committed pipeline at purchase cost; controlled independent known-latent synthetic diagnostics alongside existing 70/20-day pseudo-stockout benchmark validation.
+- New regression suite: 20 local tests passed. GitHub CI and production browser status must be checked before completing the release.
+- New browser workflow: 390/768/1512px acceptance, product races, reset/seed replay, CSV, exports and 128-trial stress. Do not change failing tests to manufacture a pass.
+- Documents: `docs/METHODOLOGY.md`, `docs/PHASES_1_3_VALIDATION.md`.
+- Phase 4 (multi-SKU shared budget/storage) explicitly **not started**.
+- Remaining validation: report actual Chromium GitHub Actions status; verify any browser errors; confirm Cloudflare deployment after merge.

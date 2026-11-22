@@ -1,5 +1,15 @@
 # FreshTwin
 
+## FreshTwin v0.4 — Phases 1–3: safer decisions and two operating modes
+
+**Two distinct workspaces:** **Vegetable Demonstration** offers ten named products with editable demand, costs, shelf lives, lead time, opening stock and age mix. **Research Benchmark** retains 865 actual anonymized product IDs and their real normalized histories. No anonymized ID is assigned a vegetable name. Switching modes never rewrites benchmark observations.
+
+**Scientific core:** daily FEFO balances, lead-time aware outstanding orders, cost-basis opening inventory and terminal credits for usable stock and committed pipeline, seeded paired Monte Carlo, small-instance candidate-search verification, and controlled synthetic known-demand diagnostics. The freshness-aware policy is a bounded sampled heuristic, **not a globally optimal multi-period solver**; genuine lost sales remain unobserved. See [v0.4 methodology](docs/METHODOLOGY.md) and [Phases 1–3 engineering validation](docs/PHASES_1_3_VALIDATION.md).
+
+**New controls:** editable per-vegetable inputs, reset to baseline, explicit stale-result notice, compact provenance, exportable opening/closing inventory ledger and reproducible research JSON, and responsive decision-lab layout. `npm run check` runs model/data regressions; a separate Chromium acceptance workflow checks rapid product selection, exports and 390/768/1512px responsiveness. The page is static and needs no paid AI key.
+
+**Release gate:** verify green GitHub CI and real browser acceptance before merging and claiming Cloudflare production readiness. Phase 4 joint-capacity/joint-budget optimization has **not** been implemented.
+
 **Stockout-aware demand intelligence and perishable-inventory decision support**
 
 [![FreshTwin CI](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/workflows/ci.yml/badge.svg)](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/workflows/ci.yml)
