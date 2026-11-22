@@ -1,6 +1,6 @@
 # FreshTwin — authoritative cross-chat project handoff
 
-Updated: 2026-11-22 (initial research prototype)
+Updated: 2026-11-22 (v0.1 released to protected main; Cloudflare deployment pending)
 
 ## Identifiers
 - Repository: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin
@@ -30,8 +30,15 @@ Updated: 2026-11-22 (initial research prototype)
 ## Scientific disclosure
 Synthetic data, cost, initial inventory and product life are assumptions. No validated live store digital twin or measured retail cost savings. Do not claim FreshRetailNet-50K has been imported, or actual product demand reconstructed; not implemented. Methods are heuristic/approximate, not optimality-certified. See `docs/METHODOLOGY.md` and `docs/VALIDATION.md`.
 
+## Verified release checkpoint (2026-11-22)
+- PR #1 was merged into `main` by squash commit `a7589180553609f9cde0aac64b4799dae27ccdee`.
+- The GitHub Actions run on `main` completed successfully: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45074388948
+- Local `npm run check`: 9/9 tests passed; `npm run build`: passed.
+- Browser screenshot/interaction check was blocked by the execution environment; **live UI QA remains outstanding**.
+- Cloudflare is not connected through this conversation and a deployed URL has **not** been verified.
+
 ## Next checkpoints
-- Commit/update and validate the feature branch; open review PR; resolve CI before merging.
+- Repository source is merged to main; keep working in a new feature branch for further changes and checking CI before merging.
 - Connect Cloudflare Pages project to GitHub `main` and verify actual public deployment URL.
 - Run browser UI test and tune charts/mobile screens.
 - Research improvement: obtain licensed historical retail data and document real versus assumed variables, if feasible.
