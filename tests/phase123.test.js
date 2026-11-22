@@ -14,3 +14,12 @@ test('no arriving replenishment after last feasible day is rationally ordered',(
 test('cost reconciliation equals acquisition less terminal assets plus other costs',()=>{const r=runPolicy(veg,hist,{days:22},'adaptive',17).metrics;assert.ok(Math.abs(r.cost-(r.initialAssets+r.purchases-r.terminalCredit+r.holding+r.disposal+r.shortagePenalty))<1e-8);});
 test('mean costs and paired intervals agree with seeded Monte Carlo output',()=>{const x=monteCarlo(veg,{days:10},52,16,hist),y=monteCarlo(veg,{days:10},52,16,hist);assert.deepEqual(x,y);for(const p of Object.values(x)){assert.ok(p.stdCost>=0);assert.ok(Number.isFinite(p.cost));assert.equal(p.trials,16);}});
 test('short shelf life and demand collapse can generate genuine inventory expiration',()=>{const s={...veg,shelfLife:2,initialInventory:100,demand:0,ageOldPercent:0,holding:0};const h=generateHistory(s,19);const r=runPolicy(s,h,{days:7,demandPath:Array(7).fill(0)},'baseline',19);assert.ok(r.metrics.waste>=100);});
+test('Monte Carlo cost components reconcile to means and cumulative sample-size diagnostics',()=>{
+ const m=monteCarlo(veg,{days:12},41,24,hist);
+ for(const x of Object.values(m)){
+  const parts=Object.values(x.costComponents).reduce((a,b)=>a+b,0);
+  assert.ok(Math.abs(parts-x.cost)<1e-7);
+  assert.deepEqual(x.convergence.map(v=>v.trials),[8,16,24]);
+  assert.ok(Math.abs(x.convergence.at(-1).meanCost-x.cost)<1e-7);
+ }
+});
