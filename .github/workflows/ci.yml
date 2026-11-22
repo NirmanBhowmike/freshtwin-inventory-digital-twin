@@ -1,0 +1,20 @@
+name: Verify FreshTwin
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run check
+      - run: npm run build
+      - name: Check deployment bundle
+        run: test -s dist/index.html && test -s dist/app.js && test -s dist/engine.js && test -s dist/styles.css
