@@ -33,17 +33,22 @@ npm run build  # creates deployable static assets in dist/
 
 ## Cloudflare deployment
 
-Deploy as **Cloudflare Pages** using Git integration:
+The supported deployment target is **Cloudflare Workers with Static Assets**. A checked-in `wrangler.jsonc` points Wrangler to the generated `./dist` assets and names the Worker. Under **Workers & Pages → Create application → Connect GitHub**, choose this repository and enter:
 
 | Setting | Value |
 |---|---|
 | Production branch | `main` |
-| Framework preset | `None` |
+| Project name | `freshtwin-inventory-digital-twin` |
 | Build command | `npm run build` |
-| Build output directory | `dist` |
+| Deploy command | `npx wrangler deploy` |
 | Root directory | `/` |
+| Preview builds | Optional; disable for the first production setup |
+| Access protection | Disabled if public viewing is intended |
+| API token | Use a new FreshTwin-specific token; never paste secrets into this repository |
 
-This prototype is fully static, does not request a Cloudflare API key, does not require backend infrastructure, and can be published on a `*.pages.dev` address. The `feat/freshtwin-functional-prototype` branch is intended for review prior to merging to `main`. Cloudflare deployment still requires repository authorization in the Cloudflare account.
+The initial static release does not need a database or backend credentials. Deploying requires Cloudflare account authorization, and the resulting public `*.workers.dev` URL must be verified in a browser. For users creating a **Pages** project instead, the same static build output `dist` can also be deployed as Pages assets.
+
+Cloudflare setup and live browser checks remain external checkpoints; do not claim production deployment before they succeed.
 
 ## CSV schema
 
