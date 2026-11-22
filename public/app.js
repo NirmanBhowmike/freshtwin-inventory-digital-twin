@@ -49,7 +49,7 @@ function renderStoreGrid(){
      const sk=state.vegOverrides[v.id]||v,active=sk.id===state.sku.id;
      return `<button type="button" class="store-card ${active?'selected':''}" data-store-sku="${sk.id}" aria-pressed="${active}"><span class="store-card-top"><span class="store-product-icon" style="--product-color:${sk.hue}">${sk.icon}</span><span class="store-signal good"><i></i> SIMULATED</span></span><span class="store-product-name">${escapeHTML(sk.name)}</span><span class="store-product-category">${escapeHTML(sk.category)} · ${sk.shelfLife}-day shelf life</span><span class="store-capacity"><span style="width:${Math.min(100,sk.initialInventory/Math.max(1,sk.demand*3)*100)}%"></span></span><span class="store-product-foot"><span><strong>${fmt(sk.initialInventory)}</strong> opening units</span><strong>${fmt(sk.demand)}/day assumption</strong></span></button>`;
    }).join('');
-   $('[data-store-sku]').forEach(btn=>btn.addEventListener('click',()=>selectVegetable(btn.dataset.storeSku)));
+   document.querySelectorAll('[data-store-sku]').forEach(btn=>btn.addEventListener('click',()=>selectVegetable(btn.dataset.storeSku)));
    return;
  }
  if(state.catalog?.catalog?.length){
