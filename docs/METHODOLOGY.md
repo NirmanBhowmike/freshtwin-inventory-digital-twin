@@ -39,3 +39,8 @@ The default model runs 28 daily time steps per policy. A common future demand tr
 ## Recommended next research steps
 
 Integrate documented, permissioned empirical observations; perform proper censored-demand likelihood or survival-based modeling; calibrate uncertainty; assess historical held-out forecasting; introduce cross-SKU capacity constraints and product waste; validate the optimizer against exhaustive search in small instances; and quantify out-of-sample trade-offs with confidence intervals and sensitivity analysis.
+
+## v0.2 visualization and uncertainty intervals
+Each simulated day now exposes remaining-life inventory cohorts and pipeline purchase orders. Unit tests reconcile the sum of cohort quantities exactly to reported closing stock and ensure pending arrivals follow the displayed day. The store visualization shows independently modeled SKUs; the width of each stock bar is relative to an explicitly assumed typical on-hand benchmark, **not physical shelf capacity**.
+
+The Monte Carlo comparison retains paired trial metrics and reports a normal-approximation 95% confidence interval for the **difference** in simulated costs between the sales-based baseline and the freshness-aware search. The interval is `mean difference ± 1.96 × sample standard deviation of paired differences / sqrt(n)`. It is an approximation under the model, not proof of realized savings, and may be unreliable with few trials or substantially non-normal differences.

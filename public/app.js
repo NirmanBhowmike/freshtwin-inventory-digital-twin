@@ -28,9 +28,59 @@ function refresh(){
  $('#dataBadge').textContent=state.loadedCSV?'USER-IMPORTED CSV':'SYNTHETIC MODE';
  renderOverview();renderInventory();renderExperiment();
 }
+function selectStoreSku(id){
+ const found=SKUS.find(x=>x.id===id);if(!found)return;
+ state.sku=found;state.loadedCSV=null;state.day=1;$('#skuSelect').value=id;$('#importMessage').textContent='';refresh();toast(`${found.name} inventory model selected.`);
+}
+function renderStoreGrid(){
+ const cards=SKUS.map((sku,index)=>{
+  const c=(sku.id===state.sku.id)?state.comparison:comparePolicies(sku,state.settings,state.seed+index*19);
+  const t=c.policies[2].timeline;
+  const x=t[t.length-1],m=c.policies[2].metrics;
+  const normal=Math.max(1,Math.round(sku.demand*(state.settings.leadTime+1)));
+  const level=Math.min(100,Math.max(0,x.inventory/normal*100));
+  const life=Math.max(1,sku.shelfLife+state.settings.shelfLifeOffset);
+  const risk=m.unmet>0?'SHORTAGE OBSERVED':m.waste>0?'WASTE OBSERVED':'NO LOSS OBSERVED';
+  const severity=m.unmet>0?'amber':m.waste>0?'blue':'good';
+  return `<button type="button" class="store-card ${sku.id===state.sku.id?'selected':''}" data-store-sku="${sku.id}" aria-pressed="${sku.id===state.sku.id}"><span class="store-card-top"><span class="store-product-icon" style="--product-color:${sku.hue}">${sku.icon}</span><span class="store-signal ${severity}"><i></i> ${risk}</span></span><span class="store-product-name">${escapeHTML(sku.name)}</span><span class="store-product-category">${escapeHTML(sku.category)} · ${life}-day shelf life</span><span class="store-capacity"><span style="width:${level.toFixed(1)}%"></span></span><span class="store-product-foot"><span><strong>${fmt(x.inventory)}</strong> units on hand · Day 28</span><strong>${pct(m.fillRate)} filled</strong></span></button>`;
+ }).join('');
+ $('#storeGrid').innerHTML=cards;
+ $$('[data-store-sku]').forEach(btn=>btn.addEventListener('click',()=>selectStoreSku(btn.dataset.storeSku)));
+}
+function renderFlowLaboratory(row){
+ const stages=[
+  {icon:'↓',label:'RECEIVED',qty:row.arrived,sub:'units arrived'},
+  {icon:'↗',label:'FULFILLED',qty:row.sales,sub:'units sold'},
+  {icon:'⚠',label:'LOST DEMAND',qty:row.missing,sub:'unmet units'},
+  {icon:'⌛',label:'EXPIRED',qty:row.expired,sub:'discarded units'},
+  {icon:'→',label:'ORDERED',qty:row.order,sub:'future arrivals'}
+ ];
+ $('#flowDayTag').textContent=`DAY ${String(row.day).padStart(2,'0')}`;
+ $('#flowStages').innerHTML=stages.map((x,i)=>`<div class="flow-stage ${i===2&&x.qty?'alert':''}"><span class="flow-stage-icon">${x.icon}</span><span class="flow-stage-label">${x.label}</span><strong>${fmt(x.qty)}</strong><small>${x.sub}</small></div>`).join('');
+ const cohorts=[...row.ageCohorts].sort((a,b)=>a.remainingLife-b.remainingLife);
+ const total=cohorts.reduce((n,x)=>n+x.qty,0);
+ $('#batchTotal').textContent=`${total} units across ${cohorts.length} cohort${cohorts.length===1?'':'s'}`;
+ $('#batchDistribution').innerHTML=cohorts.length?cohorts.map((x,i)=>`<div class="batch-segment" style="flex:${Math.max(.001,x.qty)};background:${x.remainingLife<=1?'#f9c1a1':x.remainingLife<=2?'#f4d98e':i%2?'#80d5b1':'#37af8a'}" title="${x.qty} units · ${x.remainingLife} days remaining"><span>${x.qty}</span></div>`).join(''):'<div class="batch-empty">No stock remaining at close of day</div>';
+ const legend=cohorts.map(x=>`<span><i class="batch-dot ${x.remainingLife<=1?'hot':'cool'}"></i> ${x.qty} units · ${x.remainingLife} day${x.remainingLife===1?'':'s'} left</span>`).join('');
+ const pipeline=row.pipeline.reduce((sum,x)=>sum+x.qty,0);
+ $('#pipelineSummary').innerHTML=`<div class="batch-legend">${legend||'<span>All batches consumed or expired.</span>'}</div><div class="pipeline-note"><strong>${pipeline} units</strong> currently on order ${row.pipeline.length?'· arrives on day '+row.pipeline.map(x=>x.dueDay).join(', day '):'· no pending receipts'}</div>`;
+}
+function renderTradeoff(){
+ const e=state.experiment,items=Object.entries(e),maxWaste=Math.max(1,...items.map(([,p])=>p.waste))*1.35;
+ const minFill=Math.max(0,Math.min(...items.map(([,p])=>p.fillRate))-.04),maxFill=Math.min(1,Math.max(...items.map(([,p])=>p.fillRate))+.04);
+ const w=740,h=250,left=69,right=32,top=24,bottom=48;
+ const fx=v=>left+v/maxWaste*(w-left-right),fy=v=>top+(maxFill-v)/Math.max(.02,maxFill-minFill)*(h-top-bottom);
+ let out=`<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Scatter plot comparing mean expired units and fulfillment rates for three replenishment policies"><rect x="${left}" y="${top}" width="${w-left-right}" height="${h-top-bottom}" rx="12" fill="#f5faf7"/>`;
+ for(let i=0;i<=4;i++){const y=top+(h-top-bottom)*i/4;out+=`<line x1="${left}" y1="${y}" x2="${w-right}" y2="${y}" stroke="#e1eae4"/><text x="${left-11}" y="${y+4}" font-size="11" text-anchor="end" fill="#718d7d">${((maxFill-(maxFill-minFill)*i/4)*100).toFixed(0)}%</text>`;}
+ for(let i=0;i<=4;i++){const x=left+(w-left-right)*i/4;out+=`<text x="${x}" y="${h-20}" font-size="11" text-anchor="middle" fill="#718d7d">${(maxWaste*i/4).toFixed(0)}</text>`;}
+ out+=`<text x="${(left+w-right)/2}" y="${h-3}" font-size="12" text-anchor="middle" fill="#597969">Mean units expired per trial →</text>`;
+ for(const [key,p] of items){const x=fx(p.waste),y=fy(p.fillRate);out+=`<circle cx="${x}" cy="${y}" r="12" fill="${tones[key]}" stroke="#fff" stroke-width="4"><title>${names[key]}: ${p.waste.toFixed(1)} expired units, ${(p.fillRate*100).toFixed(1)}% fill rate</title></circle><text x="${x+17}" y="${y+4}" font-size="11" font-weight="700" fill="#355b4c">${key==='baseline'?'Sales baseline':key==='corrected'?'Corrected demand':'Freshness search'}</text>`;}
+ $('#tradeoffChart').innerHTML=out+'</svg>';
+}
 function renderOverview(){
  const c=state.comparison,base=c.policies[0],aware=c.policies[1],optimized=c.policies[2],m=optimized.metrics, e=c.estimate;
  const cards=[{label:'INVENTORY FILL RATE',value:pct(m.fillRate),note:'Fulfilled units / latent units',icon:'◈',cls:''},{label:'SIMULATED TOTAL COST',value:money(m.cost),note:'Purchases + carrying + waste + shortages',icon:'＄',cls:'kpi-blue'},{label:'UNMET DEMAND',value:fmt(m.unmet)+' units',note:'28-day simulated lost sales',icon:'↘',cls:'kpi-peach'},{label:'PERISHED INVENTORY',value:fmt(m.waste)+' units',note:'Expired and disposed in simulation',icon:'♧',cls:'kpi-lime'}];
+ renderStoreGrid();
  $('#kpis').innerHTML=cards.map(x=>`<article class="kpi ${x.cls}"><div class="kpi-label">${x.label}<span class="kpi-icon">${x.icon}</span></div><div class="kpi-value">${x.value}</div><div class="kpi-note">${x.note}</div></article>`).join('');
  const tl=optimized.timeline;
  $('#inventoryChart').innerHTML=svgLineChart([{data:tl.map(r=>r.inventory),color:'#18aa88',fill:true},{data:tl.map(r=>r.demand),color:'#a7c4e4'},{data:tl.map(r=>r.arrived),color:'#e6b78d'}]);
@@ -50,6 +100,7 @@ function renderInventory(){
  const fields=[['REALIZED DEMAND',r.demand],['FULFILLED SALES',r.sales],['ENDING STOCK',r.inventory],['UNMET DEMAND',r.missing]];
  $('#dayMetrics').innerHTML=fields.map(([k,v])=>`<div class="day-metric"><small>${k}</small><strong>${fmt(v)}</strong></div>`).join('');
  const evt=r.missing?`A stockout prevented ${r.missing} unit(s) of simulated demand from being fulfilled.`:r.expired?`${r.expired} units reached their modeled expiration date.`:r.arrived?`${r.arrived} units arrived from a previously placed purchase order.`:'The inventory state advanced without a stockout or expiration event.';
+ renderFlowLaboratory(r);
  $('#dayEvent').innerHTML=`<strong>${r.stockout?'⚠ Stockout recorded':'✓ Inventory state updated'}</strong>${evt} Orders placed today: ${r.order} units. Receipts: ${r.arrived} units. Expired: ${r.expired} units.`;
  $('#ledgerTable tbody').innerHTML=tl.map(r=>`<tr class="${r.missing?'warn':''}"><td>Day ${String(r.day).padStart(2,'0')}</td><td>${r.demand}</td><td>${r.sales}</td><td>${r.missing}</td><td>${r.arrived}</td><td>${r.expired}</td><td>${r.order}</td><td>${r.inventory}</td></tr>`).join('');
 }
@@ -59,6 +110,10 @@ function renderExperiment(){
  $('#comparisonChart').innerHTML=Object.entries(e).map(([name,p])=>`<div class="compare-row"><div class="compare-head"><strong>${names[name]}</strong><span>${money(p.cost)}</span></div><div class="compare-track"><div style="width:${(p.cost/max*100).toFixed(2)}%;background:${tones[name]}"></div></div></div>`).join('');
  const sorted=Object.entries(e).sort((a,b)=>a[1].cost-b[1].cost),best=sorted[0];
  $('#experimentSummary').innerHTML=`<strong>Lowest mean modeled cost: ${names[best[0]]}.</strong> Across ${state.trials} paired runs, it achieved ${money(best[1].cost)} average cost and ${pct(best[1].fillRate)} fill rate. This is a simulation result, not evidence of realized retail savings.`;
+ const paired=e.adaptive.pairedCostBenefit;
+ const [lower,upper]=paired.ci95;
+ $('#pairedInterval').innerHTML=`<span class="interval-caption">PAIRED COST DIFFERENCE · SALES BASELINE − FRESHNESS SEARCH</span><strong>${paired.mean>=0?'+':'−'}${money(Math.abs(paired.mean))} <small>per 28-day trial</small></strong><p>Approximate 95% interval: ${money(lower)} to ${money(upper)}. ${lower>0?'Entire interval favors freshness-aware search.':upper<0?'Entire interval favors the sales baseline.':'Interval crosses zero; direction is inconclusive under this simulation.'} These are model-based intervals, not field-validated savings.</p>`;
+ renderTradeoff();
  $('#researchTable tbody').innerHTML=Object.entries(e).map(([p,m])=>`<tr><td><strong>${names[p]}</strong></td><td>${money(m.cost)}</td><td>${pct(m.fillRate)}</td><td>${fmt(m.waste,1)}</td><td>${money(m.cvar90)}</td></tr>`).join('');
 }
 function settingsFromControls(){state.settings={days:28,demandMultiplier:Number($('#demandRange').value)/100,leadTime:Number($('#leadRange').value),shelfLifeOffset:Number($('#shelfRange').value),shortageWeight:Number($('#shortageRange').value)/10};state.trials=Number($('#trialRange').value);$('#demandValue').textContent=Math.round(state.settings.demandMultiplier*100)+'%';$('#leadValue').textContent=state.settings.leadTime+' day'+(state.settings.leadTime===1?'':'s');$('#shelfValue').textContent=(state.settings.shelfLifeOffset>0?'+':'')+state.settings.shelfLifeOffset+' days';$('#shortageValue').textContent=state.settings.shortageWeight.toFixed(1)+'×';$('#trialValue').textContent=state.trials+' runs';}
@@ -67,11 +122,12 @@ function navigate(view){if(!viewData[view])view='overview';$$('.view').forEach(e
 function downloadText(filename,data,type='text/plain'){const blob=new Blob([data],{type});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function csvValue(s){return '"'+String(s).replaceAll('"','""')+'"';}
 function exportLedger(){const t=state.comparison.policies[2].timeline;const rows=['day,demand,sales,lost,arrivals,expired,orders,closing_stock',...t.map(x=>[x.day,x.demand,x.sales,x.missing,x.arrived,x.expired,x.order,x.inventory].join(','))];downloadText('freshtwin-inventory-ledger.csv',rows.join('\n'),'text/csv');toast('Daily inventory ledger exported.');}
-function exportResults(){const payload={project:'FreshTwin',version:'0.1.0',dataSource:state.loadedCSV?'user-supplied browser CSV':'synthetic illustrated history',sku:state.sku.id,seed:state.seed,settings:state.settings,historyMetrics:state.comparison.estimate,policies:state.comparison.policies.map(x=>({policy:x.policy,metrics:x.metrics})),monteCarlo:state.experiment,trials:state.trials,disclaimer:'Outputs from a research prototype. Synthetic assumptions do not represent realized retail performance.'};downloadText('freshtwin-research-results.json',JSON.stringify(payload,null,2),'application/json');toast('Research results downloaded.');}
+function exportResults(){const payload={project:'FreshTwin',version:'0.2.0',dataSource:state.loadedCSV?'user-supplied browser CSV':'synthetic illustrated history',sku:state.sku.id,seed:state.seed,settings:state.settings,historyMetrics:state.comparison.estimate,policies:state.comparison.policies.map(x=>({policy:x.policy,metrics:x.metrics})),monteCarlo:state.experiment,trials:state.trials,disclaimer:'Outputs from a research prototype. Synthetic assumptions do not represent realized retail performance.'};downloadText('freshtwin-research-results.json',JSON.stringify(payload,null,2),'application/json');toast('Research results downloaded.');}
 function bind(){
  $('#skuSelect').innerHTML=SKUS.map(s=>`<option value="${s.id}">${escapeHTML(s.name)} · ${s.id}</option>`).join('');
  $$('[data-nav]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();navigate(el.dataset.nav)}));
  $('#openLab').addEventListener('click',()=>navigate('experiments'));
+ $('#storeToReplay').addEventListener('click',()=>navigate('inventory'));
  $('#skuSelect').addEventListener('change',e=>{state.sku=SKUS.find(s=>s.id===e.target.value)||SKUS[0];state.loadedCSV=null;state.day=1;refresh();toast('Selected SKU loaded.');});
  $('#seedInput').addEventListener('change',e=>{state.seed=Math.max(1,Math.min(999999,Math.floor(Number(e.target.value)||42)));e.target.value=state.seed;state.day=1;refresh();});
  $('#replayBtn').addEventListener('click',()=>{state.seed=state.seed+1;$('#seedInput').value=state.seed;state.day=1;refresh();toast('New reproducible scenario generated.');});
