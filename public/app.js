@@ -114,24 +114,24 @@ function renderOverview(){
  $('#chartFoot').innerHTML=`<span>${tl.filter(x=>x.stockout).length} simulated stockout days</span><span>Demand path seed: ${state.seed}</span>`;
  $('#recommendation').innerHTML=`${fmt(m.orders)} <span style="font-size:14px;font-weight:600;color:#93ada1;letter-spacing:0">units</span>`;
  const best=[...c.policies].sort((a,b)=>a.metrics.cost-b.metrics.cost)[0];
- $('#recommendationText').textContent=`The bounded freshness-aware policy orders ${fmt(m.orders)} units across 28 simulated days. Lowest realized cost in this scenario: ${names[best.policy]}.`;
+ $('#recommendationText').textContent=`The sampled freshness-aware policy orders ${fmt(m.orders)} units across ${state.settings.days} simulated days. Lowest modeled cost in this scenario: ${names[best.policy]}.`;
  $('#policyList').innerHTML=c.policies.map(p=>`<div class="policy-row"><div><div class="policy-name">${names[p.policy]}</div><div class="policy-sub">28-day simulation result</div></div><div class="policy-result">${money(p.metrics.cost)}<small>${pct(p.metrics.fillRate)} fill rate</small></div></div>`).join('');
  const indexFactor=state.mode==='benchmark'&&state.currentRecord&&!state.loadedCSV?MODEL_INDEX_MULTIPLIER:1;
  const max=Math.max(e.naive,e.corrected,1)*1.2;
  $('#demandBars').innerHTML=`<div class="demand-bars"><div class="demand-row"><div class="demand-head"><strong>Recorded sales rate</strong><span>${fmt(e.naive/indexFactor,2)} ${indexFactor>1?'normalized/day':'units/day'}</span></div><div class="demand-track"><span style="width:${100*e.naive/max}%"></span></div></div><div class="demand-row"><div class="demand-head"><strong>Stockout-adjusted estimate</strong><span>${fmt(e.corrected/indexFactor,2)} ${indexFactor>1?'normalized/day':'units/day'}</span></div><div class="demand-track corrected"><span style="width:${100*e.corrected/max}%"></span></div></div><p class="demand-comment">${e.censoredDays} of the last ${Math.min(35,state.history.length)} historical days had unavailable hours. The adjustment estimates unseen demand; actual lost sales remain unknown. Benchmark sales are normalized.</p></div>`;
  const sk=state.sku;
- const shelfSKUS=state.mode==='vegetable'?VEGETABLES:(state.currentRecord?[state.sku]:SKUS);
+ const shelfSKUS=state.mode==='vegetable'?VEGETABLES.slice(0,6):(state.currentRecord?[state.sku]:SKUS);
  $('#shelfVisual').innerHTML=`<div class="shelf-illustration"><div class="shelf-items">${shelfSKUS.map(s=>`<div class="shelf-item" title="${escapeHTML(s.name)}">${s.icon}</div>`).join('')}</div><div class="shelf-bar"></div><div class="shelf-caption"><span>First-expiring-first-out rotation</span><span>1 selected SKU model</span></div></div><div class="shelf-foot">◷ <span><strong>${escapeHTML(sk.name)}</strong> · assumed shelf life ${Math.max(1,sk.shelfLife+state.settings.shelfLifeOffset)} days</span></div>`;
 }
 function renderInventory(){
  const tl=state.comparison.policies[2].timeline,idx=Math.min(tl.length-1,Math.max(0,state.day-1)),r=tl[idx];
  $('#daySlider').max=tl.length;$('#daySlider').value=idx+1;$('#replayTitle').textContent=`Day ${String(idx+1).padStart(2,'0')} / ${tl.length}`;
- const fields=[['SIMULATED DEMAND',r.demand],['FULFILLED SALES',r.sales],['ENDING STOCK',r.inventory],['UNMET DEMAND',r.missing]];
+ const fields=[['OPENING STOCK',r.openingInventory],['ARRIVALS',r.arrived],['FULFILLED SALES',r.sales],['ENDING STOCK',r.inventory]];
  $('#dayMetrics').innerHTML=fields.map(([k,v])=>`<div class="day-metric"><small>${k}</small><strong>${fmt(v)}</strong></div>`).join('');
  const evt=r.missing?`A stockout prevented ${r.missing} unit(s) of simulated demand from being fulfilled.`:r.expired?`${r.expired} units reached their modeled expiration date.`:r.arrived?`${r.arrived} units arrived from a previously placed purchase order.`:'The inventory state advanced without a stockout or expiration event.';
  renderFlowLaboratory(r);
  $('#dayEvent').innerHTML=`<strong>${r.stockout?'⚠ Stockout recorded':'✓ Inventory state updated'}</strong>${evt} Orders placed today: ${r.order} units. Receipts: ${r.arrived} units. Expired: ${r.expired} units.`;
- $('#ledgerTable tbody').innerHTML=tl.map(r=>`<tr class="${r.missing?'warn':''}"><td>Day ${String(r.day).padStart(2,'0')}</td><td>${r.demand}</td><td>${r.sales}</td><td>${r.missing}</td><td>${r.arrived}</td><td>${r.expired}</td><td>${r.order}</td><td>${r.inventory}</td></tr>`).join('');
+ $('#ledgerTable tbody').innerHTML=tl.map(r=>`<tr class="${r.missing?'warn':''}"><td>Day ${String(r.day).padStart(2,'0')}</td><td>${r.openingInventory}</td><td>${r.demand}</td><td>${r.sales}</td><td>${r.missing}</td><td>${r.arrived}</td><td>${r.expired}</td><td>${r.order}</td><td>${r.inventory}</td></tr>`).join('');
 }
 function renderExperiment(){
  const e=state.experiment;
@@ -150,20 +150,20 @@ const viewData={overview:['Operations overview','OPERATIONS INTELLIGENCE · DIGI
 function navigate(view){if(!viewData[view])view='overview';$$('.view').forEach(el=>el.classList.toggle('active',el.id===view));$$('[data-nav]').forEach(el=>el.classList.toggle('active',el.dataset.nav===view));const [crumb,eyebrow,title,subtitle]=viewData[view];$('#breadcrumb').textContent=crumb;$('#pageEyebrow').textContent=eyebrow;$('#pageTitle').innerHTML=escapeHTML(title).replace(/\.$/,'<span class="heading-dot">.</span>');$('#pageSubtitle').textContent=subtitle;window.location.hash=view;window.scrollTo({top:0,behavior:'instant'});}
 function downloadText(filename,data,type='text/plain'){const blob=new Blob([data],{type});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function csvValue(s){return '"'+String(s).replaceAll('"','""')+'"';}
-function exportLedger(){const t=state.comparison.policies[2].timeline;const rows=['day,demand,sales,lost,arrivals,expired,orders,closing_stock',...t.map(x=>[x.day,x.demand,x.sales,x.missing,x.arrived,x.expired,x.order,x.inventory].join(','))];downloadText('freshtwin-inventory-ledger.csv',rows.join('\n'),'text/csv');toast('Daily inventory ledger exported.');}
+function exportLedger(){const t=state.comparison.policies[2].timeline;const rows=['day,opening_stock,demand,sales,lost,arrivals,expired,orders,closing_stock,outstanding_orders',...t.map(x=>[x.day,x.openingInventory,x.demand,x.sales,x.missing,x.arrived,x.expired,x.order,x.inventory,x.pipeline.reduce((sum,p)=>sum+p.qty,0)].join(','))];downloadText('freshtwin-inventory-ledger.csv',rows.join('\n'),'text/csv');toast('Daily inventory ledger exported.');}
 function exportResults(){const payload={project:'FreshTwin',version:'0.3.0',dataSource:state.loadedCSV?'user-supplied browser CSV':state.currentRecord?'FreshRetailNet-50K real normalized history + assumed scenario parameters':'synthetic illustrated history',sku:state.sku.id,seed:state.seed,settings:state.settings,historyMetrics:state.comparison.estimate,policies:state.comparison.policies.map(x=>({policy:x.policy,metrics:x.metrics})),monteCarlo:state.experiment,trials:state.trials,dataset:state.catalog?{name:state.catalog.dataset,sha256:state.catalog.rawSha256,license:state.catalog.license,product:state.currentRecord?.id,store:state.currentRecord?.store}:null,disclaimer:'Observed benchmark sales are normalized. Inventory quantities, aging, demand simulations and monetary metrics are scenario assumptions, not observed store outcomes.'};downloadText('freshtwin-research-results.json',JSON.stringify(payload,null,2),'application/json');toast('Research results downloaded.');}
 const benchmarkShards=new Map();
 function updateSourceStatus(){
- const real=Boolean(state.currentRecord&&!state.loadedCSV), imported=Boolean(state.loadedCSV);
- $('#sourceState').textContent=imported?'User-imported observations':real?'FreshRetailNet-50K · observed sales':'Scenario demo data';
- $('#sourceCaption').textContent=imported?'Session-only CSV · scenario assumptions apply':real?`Product ${formatId(state.currentRecord.id)} · Store ${state.currentRecord.store} · 90 days · normalized sales`:'Loading verified benchmark catalog, or using a clearly labeled fallback';
+ const real=Boolean(state.mode==='benchmark'&&state.currentRecord&&!state.loadedCSV), imported=Boolean(state.loadedCSV);
+ $('#sourceState').textContent=imported?'User-imported observations':real?'FreshRetailNet-50K · observed normalized sales':'Vegetable demonstration · assumed scenarios';
+ $('#sourceCaption').textContent=imported?'Session-only CSV · scenario assumptions apply':real?`Product ${formatId(state.currentRecord.id)} · Store ${state.currentRecord.store} · 90 days · normalized sales`:'Ten named vegetables · editable illustrative inputs · known simulated demand';
  $('#sourceStateDot').className=`source-dot ${real?'real':imported?'imported':'demo'}`;
  $('#metricScope').textContent=real?`Source: real normalized sales / stockouts. Decision outcomes use 10× scaled scenario units, assumed five-day shelf life and illustrative cost parameters. These are not retail financial results.`:
    imported?'Observed CSV is used to calibrate a separate inventory scenario; economic parameters are assumed.':'Scenario quantities, inventory and costs are simulated, not measured retailer observations.';
 }
 function renderObservedHistory(){
  const panel=$('#observedPanel');
- if(!state.currentRows||state.loadedCSV){panel.hidden=true;return;}
+ if(state.mode!=='benchmark'||!state.currentRows||state.loadedCSV){panel.hidden=true;return;}
  panel.hidden=false;
  const rows=state.currentRows, rec=state.currentRecord;
  const max=Math.max(.01,...rows.map(x=>x.normalizedSales));
@@ -243,7 +243,7 @@ async function loadBenchmarkCatalog(){
 }
 function selectVegetable(id){
  const original=VEGETABLES.find(v=>v.id===id);if(!original)return;
- state.loadToken++;state.loading=false;state.mode='vegetable';
+ state.loadToken++;setBusy(false);state.mode='vegetable';
  state.sku=state.vegOverrides[id]||original;state.currentRecord=null;state.currentRows=null;state.benchmarkHistory=null;state.loadedCSV=null;state.day=1;
  $('#leadRange').value=state.sku.leadTime??1;settingsFromControls();
  $('#skuSelect').innerHTML=VEGETABLES.map(v=>`<option value="${v.id}">${escapeHTML(v.name)} · ${v.id}</option>`).join('');
