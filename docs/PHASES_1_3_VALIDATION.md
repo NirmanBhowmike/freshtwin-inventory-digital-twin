@@ -36,8 +36,14 @@ Date: 2026-11-22. Working release: FreshTwin v0.4, development branch `feat/phas
 
 - Existing suite: source/catalog and inventory simulation tests preserved.
 - New regressions: product parameter validation, mass balance, terminal asset conservation, deterministic replay, synthetic known-truth errors, bounded-search vs exact sampled candidate enumeration, missing late-horizon arrival, cost identity, Monte Carlo reproducibility, genuine model-generated expiration.
-- Browser acceptance: real Chromium with published benchmark shards; checks products, selectors, consecutive asynchronous clicks, seeds, exports, CSV import/restore, recorded and illustrative data modes, responsive widths and JavaScript errors. **Record actual GitHub Actions outcomes after the workflow completes.**
+- Browser acceptance: real Chromium with published benchmark shards; checks products, selectors, consecutive asynchronous clicks, seeds, exports, CSV import/restore, recorded and illustrative data modes, responsive widths and JavaScript errors. **Actual verified GitHub Actions results:** browser suite run #45085398138 passed **24/24** on 2026-11-22 using real benchmark shards and a local preview server. Quality run #45085398163 passed **28/28** Node tests and production build. These results predate Cloudflare production acceptance.
 
 ## Known limits / release gate
 
 Do not call this a validated physical-store digital twin. No model can identify real lost demand from anonymous normalized sales alone without further assumptions and testing. No real unit economics or grocery purchase orders are known. Phase 4 (joint capacity and budget) remains blocked until Phase 1–3 checks and deployment are verified. The course recording and two-page submission discussion remain separate follow-up work.
+## Verified pre-merge browser gate (2026-11-22)
+- [Chromium interactive acceptance run](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085398138): **24 passes, 0 failures**, no uncaught browser errors or failed benchmark asset responses.
+- [Node tests and static build](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085398163): **28 tests passed**, 0 failures; build succeeded.
+- Confirmed rapid product requests select the newest ID, restore seed reproduces chart, 128 paired trials render, CSV and research exports work, inventory ledger reconciles, and 390/768/1512px document widths do not overflow.
+- These are **real Chromium tests against GitHub's preview server**, not an assertion of verified Cloudflare production deployment.
+- Phase 4 remains out of scope until this review is merged and Cloudflare production has been checked.

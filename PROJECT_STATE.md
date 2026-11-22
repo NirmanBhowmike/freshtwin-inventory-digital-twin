@@ -1,83 +1,46 @@
-# FreshTwin — authoritative cross-chat project handoff
+# FreshTwin — authoritative current project status
 
-Updated: 2026-11-22 (v0.2 visual/scientific transparency upgrade; release gate pending)
+Updated: 2026-11-22 · target release **v0.4.0** · source branch `feat/phases-1-3-validated-vegetable-modes`.
 
-## Identifiers
-- Repository: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin
-- Public repo; owner controls changes. Protected `main` ruleset ID: `27859261`, enforcement `active` verified from GitHub API.
-- Release approach: all changes via feature branch, GitHub CI and review PR into protected `main`.
-- Hosting: Cloudflare Workers (Git integration and static assets); user provided `https://freshtwin-inventory-digital-twin.nirman-bhowmike.workers.dev/`. Remote HTTP/browser fetch remains blocked in this execution environment; **live UI behavior not verified here**.
-- Project: INEN-5350-48F Production & Inventory Control, Dr. James Curry.
-- Formal title: Intelligent Fresh-Food Inventory Digital Twin: Stockout-Aware Demand Estimation and Stochastic Replenishment Optimization for Perishable Retail Systems.
-- Submission: 2-page personally written Word report, screenshots, brief result quality discussion, 1–2 articles, and a recorded working demonstration; deadline 2026-12-01 at 11:59 PM CST.
+## Ownership and identifiers
+- GitHub: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin
+- Cloudflare user-provided URL: https://freshtwin-inventory-digital-twin.nirman-bhowmike.workers.dev/
+- Public repository, original software source unlicensed (all rights reserved); publisher data CC BY 4.0 with attribution.
+- Protected `main` with ruleset ID `27859261`, active. Use feature branch, PR, green checks, squash merge; no forced writes to main.
+- Work for INEN-5350-48F (Production & Inventory Control), Dr. James Curry. Formal research title: “Intelligent Fresh-Food Inventory Digital Twin: Stockout-Aware Demand Estimation and Stochastic Replenishment Optimization for Perishable Retail Systems.”
+- Submission deadline: 2026-12-01 at 11:59 PM CST. User personally writes two-page Word discussion after product; project recording, screenshots, quality discussion and 1–2 research articles are separate subsequent deliverables.
 
-## Standing requirements
-1. Functional working public app before recording/write-up.
-2. High visual polish, meaningful graphics and responsive design.
-3. Document assumptions, data provenance, tests, reproducibility, project decisions and future work.
-4. Public GitHub repository polished as a research software deliverable; **no open source license** granted.
-5. Complete continuity across new chat windows through this file, README, documentation and commit history.
-6. Automate executable tests/deployment where supported; never assert Cloudflare deployment succeeded without verification.
+## Latest verified development release — Phases 1–3
+- **PR #6:** https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/pull/6. Work remained on the feature branch while acceptance was evaluated. **Verify PR merge before claiming deployed v0.4.**
+- GitHub Actions quality run: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085398163 — **28/28 Node tests passed and static production build passed**.
+- GitHub Actions Chromium browser acceptance: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085398138 — **24/24 checks passed**. Used actual benchmark shards and the local preview server. Tests include ten vegetable products, editable assumptions, product selection races, deterministic seed replay, conservation ledger, Monte Carlo maximum 128 trials, reset/stale markers, CSV import, exports, responsive widths 390/768/1512px and zero uncaught browser JavaScript / benchmark network errors.
+- A genuine event-binding bug `document.querySelector` vs `querySelectorAll` originally broke rendering. Fixed in commit `6a4867fc1eeb16b9d33d2da5a0c934eca04c4301` and verified in source + browser acceptance.
+- Existing 865-product attributed benchmark preserved: 77,850 genuine daily normalized observations (90 each) in 16 history shards. Different products can originate from different stores. NO invented physical counts, product names, prices, shelf lives or observed lost demand.
 
-## Implemented in prototype
-- Dependency-free static web app with native SVG charts, research/operations/decision lab tabs, mobile layouts and export functionality.
-- Five illustrative SKUs, seeded synthetic 90-day observations.
-- Stockout-adjusted demand heuristic, FEFO perishable inventory balance and 3 policy simulation.
-- Seeded paired Monte Carlo benchmark, CVaR90 reporting, risk and service metrics.
-- Browser-local CSV import/export.
-- Node built-in unit tests and GitHub Actions CI.
+## Functional v0.4 features
+- Vegetable Demonstration: 10 named vegetables with separate illustrative demand, variability, purchase/selling costs, holding, shortage/disposal cost, shelf life, supplier lead, storage per unit, initial stock and old cohort share, editable in the app.
+- Research Benchmark: 865 anonymized product IDs with original normalized sales and stockout observations, chronological pseudo-stockout validation with artificial withholding and attribution. No false product-name mapping.
+- Corrected deterministic perishable-inventory engine: FEFO batch ages, daily conservation, lead-time pipeline, usable-stock terminal accounting, bounded scenario-sampled order search and baseline policy comparisons. Search is approximate, no global-optimality claim.
+- Honest research outputs: mean modeled cost, service and expirations, paired CIs, cost CVaR90, cost decomposition, trial-count convergence, controlled known-latent synthetic demand diagnostic, reproducible JSON and CSV exports.
+- Self-explanatory interface and mathematical Methodology section, loading/race safeguards, scenario reset, stale results, responsive decision lab.
 
-## Scientific disclosure
-Synthetic data, cost, initial inventory and product life are assumptions. No validated live store digital twin or measured retail cost savings. Do not claim FreshRetailNet-50K has been imported, or actual product demand reconstructed; not implemented. Methods are heuristic/approximate, not optimality-certified. See `docs/METHODOLOGY.md` and `docs/VALIDATION.md`.
+## Scientific boundaries
+- Real benchmark data contains anonymized normalized observations, NOT known product identities, on-hand counts, lifetime values or cost inputs.
+- Explicitly assumed scenario parameters and future latent-demand simulation are NOT measured retail economics, real recovered lost demand, observed food waste or a continuously synchronized physical digital twin.
+- Terminal credit treats remaining usable stock and outstanding paid purchase orders as assets at cost. May require reevaluation under alternative accounting assumptions.
+- Some sophisticated policies cost more than the simple baseline in certain simulations; preserve and explain, never manipulate results to favor one method.
+- The 95% intervals and sample CVaR90 describe simulated uncertainty only; real-world performance validation remains open.
 
-## Verified v0.2 development checkpoint (2026-11-22)
-- Added interactive simulated store board, visual day-level product flow, exact inventory age-cohort view, service-versus-waste chart, and paired-cost confidence intervals.
-- Local `npm run check`: **11/11 tests pass** (including age-cohort reconciliation and interval sanity); `npm run build`: succeeds.
-- Browser automation/browser screenshots are blocked by the execution environment administrative policy; visual QA remains unverified and must be completed after deployment.
-- The visual store models five SKUs independently; no shared physical shelf capacity, product substitution or real retail integration is claimed.
-- New release requires merging only after CI passes.
+## Remaining and next actions
+1. Verify PR #6 is merged into protected `main`, and main GitHub CI remains green.
+2. Independently verify the Cloudflare production deployment actually serves v0.4, with source-mode switch, real data fetch and live interactive controls. GitHub's local browser suite is NOT a production URL test.
+3. Review visual design/screenshot acceptance as needed. No need to expose an API token; Cloudflare Git build should auto-deploy the protected main branch.
+4. **Phase 4 is not started**: future joint multi-vegetable procurement subject to shared cold-storage capacity and purchasing budget, mathematical verification of constraint handling and comparative benchmarks.
+5. Only after functional product validation, prepare the assignment recording and student-authored two-page Word discussion.
 
-## Verified release checkpoint (2026-11-22)
-- PR #1 was merged into `main` by squash commit `a7589180553609f9cde0aac64b4799dae27ccdee`.
-- The GitHub Actions run on `main` completed successfully: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45074388948
-- Local `npm run check`: 9/9 tests passed; `npm run build`: passed.
-- Browser screenshot/interaction check was blocked by the execution environment; **live UI QA remains outstanding**.
-- Cloudflare is not connected through this conversation and a deployed URL has **not** been verified.
-
-## Next checkpoints
-- Repository source is merged to main; keep working in a new feature branch for further changes and checking CI before merging.
-- Confirm Cloudflare Workers Git deployment updates the given workers.dev URL following changes to `main`, and verify public page controls.
-- Run browser UI test and tune charts/mobile screens; blocked in current tool environment.
-- Deepen scientific rigor: replace heuristic stockout correction with calibrated, held-out evaluated censored-demand model; implement documented lead-time/expiry constrained optimization and compare with transparent baseline.
-- Evaluate a legally usable real dataset (FreshRetailNet-50K is a candidate, not integrated), preserving normalized-data and absent-inventory caveats.
-- Research improvement: obtain licensed historical retail data and document real versus assumed variables, if feasible.
-- Later: capture verified screenshots, recording, and write the two-page submission in user's own voice.
-
-## New chat instructions
-Read this file first. Check GitHub latest branch/PR/CI status and public Cloudflare URL before modifying source. Preserve approved requirements; report what is verified vs pending. Work on a feature branch; do not overwrite `main` or remove repository protections. Continue technical implementation without re-asking already answered choices.
-
-## v0.3 real-dataset implementation (2026-11-22)
-- User confirmed the **FreshTwin** name. User requested a professional, self-explanatory product, removal of the full-width synthetic demonstration banner, real FreshRetailNet-50K integration, and a much larger product catalog.
-- Proposed branch: `feat/freshtwin-real-data-catalog`. New `src/empirical.js` uses real normalized observation histories and explicitly distinct modeled inventory scenario units. The catalog will expose **865 anonymized product IDs**, not fake fruit or vegetable names. Source is Dingdong-Inc, CC BY 4.0.
-- Reproducible importer `scripts/import_freshretail.py` reads the 4.5M-row benchmark training split, selects a representative 90-day store series for each product, emits 16 static JSON shards and a manifest with hash/license. GitHub workflow `.github/workflows/import-freshretail.yml` is designed to generate and commit the actual assets on the development branch. Source rows must be validated before merge.
-- New UI searches, filters and sorts products, displays observed normalized daily sales with stockout indications, and shows a pseudo-stockout backtest on artificially withheld late-day observations. Full-width demo disclaimer replaced by a compact collapsible explanation. Simulation costs and shelf lives remain assumed.
-- Local tests at the time of implementation: 16/16 pass; `npm run build` passes. **Data ingestion and public Cloudflare browser verification remain PENDING until explicitly verified.** Do not assert real source records are deployed before the workflow succeeds and the resulting catalog is inspected.
-- Live URL supplied by user: https://freshtwin-inventory-digital-twin.nirman-bhowmike.workers.dev/ . This link has not been verified with a live browser in the current tool environment.
-- Next: run dataset import workflow on the feature branch; verify 865 products and 16 shards, inspect correctness/size; run GitHub CI; merge reviewed PR; confirm Workers deployment and browser. Then calibrate model and develop stronger empirical experiments.
-
-## Verified importer and browser QA (2026-11-22)
-- GitHub data ingest workflow run #45078880043 completed successfully and created commit `b956d38eb50d69c0b4c01958e9daca0fb569ae59` on `feat/freshtwin-real-data-catalog`.
-- Publisher raw SHA256 `6706832db892bbae4969c19d87e07975d2543d2ba7d7d4756360654785de5a3d`.
-- **Real data cross-shard audit**: 865 unique products, 865 representative 90-day histories, 77,850 real observations, 16 JSON shards, 0 invalid or misaligned records, hourly normalized sales sum to daily normalized sales (max difference ≈ 7.11e-15).
-- Browser QA used Playwright Chromium's `page.set_content` in the restricted local environment with **an explicitly synthetic UI fixture** to test interaction mechanics, not the actual live public catalog. Search/selection/navigation/stockout chart/experiments passed, no JS errors, desktop and mobile within viewport.
-- Local `npm run check` and `npm run build` succeed; 16 tests.
-- **Cloudflare live application behavior remains unverified** until source is merged and public deployed URL is checked. No claim of production data availability before this.
-## v0.4 Phase 1–3 upgrade — 2026-11-22
-- Feature branch: `feat/phases-1-3-validated-vegetable-modes`; draft PR #6. Do **not** assume merged or deployed without confirmation.
-- UI: independent named vegetable demos (ten SKUs), retained attributed 865-ID benchmark, per-product editable inputs, responsive mode switch, source-aware state, request sequencing and in-flight shard caching, scenario reset and stale-parameter notice.
-- Model: FEFO rollout candidate objective; day-by-day conservation; explicit end-of-horizon asset carry-forward for usable closing stock and committed pipeline at purchase cost; controlled independent known-latent synthetic diagnostics alongside existing 70/20-day pseudo-stockout benchmark validation.
-- New regression suite: 20 local tests passed. GitHub CI and production browser status must be checked before completing the release.
-- New browser workflow: 390/768/1512px acceptance, product races, reset/seed replay, CSV, exports and 128-trial stress. Do not change failing tests to manufacture a pass.
-- Documents: `docs/METHODOLOGY.md`, `docs/PHASES_1_3_VALIDATION.md`.
-- Phase 4 (multi-SKU shared budget/storage) explicitly **not started**.
-- Remaining validation: report actual Chromium GitHub Actions status; verify any browser errors; confirm Cloudflare deployment after merge.
+## Required references for handoff
+- `README.md` quick start and data provenance.
+- `docs/METHODOLOGY.md` mathematical objective, FEFO, demand modeling and limits.
+- `docs/PHASES_1_3_VALIDATION.md` phase-by-phase defects, fixes and acceptance evidence.
+- `docs/DATA_SOURCE.md` data source hashes, 865 series, dataset license.
+- `.github/workflows/ci.yml` + `.github/workflows/browser-acceptance.yml` for CI.
