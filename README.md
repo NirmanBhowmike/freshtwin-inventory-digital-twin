@@ -8,7 +8,7 @@
 
 **New controls:** editable per-vegetable inputs, reset to baseline, explicit stale-result notice, compact provenance, exportable opening/closing inventory ledger and reproducible research JSON, and responsive decision-lab layout. `npm run check` runs model/data regressions; a separate Chromium acceptance workflow checks rapid product selection, exports and 390/768/1512px responsiveness. The page is static and needs no paid AI key.
 
-**Verified pre-merge acceptance:** the branch passed **28/28 Node-based tests and a production build** in GitHub Actions and **24/24 actual Chromium interactive checks** including real benchmark assets, 128-trial Monte Carlo, mode switching, exports, seed reproducibility, and 390/768/1512px layouts. The Cloudflare-deployed site still requires post-merge acceptance. Phase 4 joint-capacity/joint-budget optimization has **not** been implemented.
+**Verified release acceptance:** the branch passed **28/28 Node-based tests and a production build** in GitHub Actions and **24/24 actual Chromium interactive checks** including real benchmark assets, 128-trial Monte Carlo, mode switching, exports, seed reproducibility, and 390/768/1512px layouts. The live Cloudflare website **passed 24/24 browser acceptance checks** after release and serves the attributed real-data catalog. Phase 4 joint-capacity/joint-budget optimization has **not** been implemented.
 
 **Stockout-aware demand intelligence and perishable-inventory decision support**
 
@@ -17,6 +17,13 @@
 [**Open the public application**](https://freshtwin-inventory-digital-twin.nirman-bhowmike.workers.dev/) · [Read methodology](docs/METHODOLOGY.md) · [Dataset and attribution](docs/DATA_SOURCE.md)
 
 FreshTwin is an interactive inventory-research application developed for **INEN-5350 Production & Inventory Control**. It illustrates how stockout-censored sales affect replenishment planning for perishable goods. Its user experience puts the product data first, followed by model selection, transparent simulation, inventory aging and risk-aware comparison.
+
+## Verified release and production quality
+
+- **Public app:** [FreshTwin on Cloudflare Workers](https://freshtwin-inventory-digital-twin.nirman-bhowmike.workers.dev/)
+- **28/28** Node tests and production static build: [GitHub quality evidence](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085398163).
+- **24/24** Chromium checks against the **actual public Cloudflare URL**, including live data fetch, responsive 390/768/1512px layouts, deterministic seed, catalog selection, CSV and exports: [production acceptance evidence](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085856763).
+- **Research status:** Phases 1–3 complete and technically verified. Phase 4 joint multi-product optimization intentionally not started. Outputs are simulation-based with explicit assumptions; a production browser test does not establish field validity.
 
 ## Product capabilities
 

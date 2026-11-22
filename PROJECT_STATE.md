@@ -11,7 +11,7 @@ Updated: 2026-11-22 · target release **v0.4.0** · source branch `feat/phases-1
 - Submission deadline: 2026-12-01 at 11:59 PM CST. User personally writes two-page Word discussion after product; project recording, screenshots, quality discussion and 1–2 research articles are separate subsequent deliverables.
 
 ## Latest verified development release — Phases 1–3
-- **PR #6:** https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/pull/6. PR #6 was **merged into protected main** at commit `8943be00ce2e5d29ecc8312a89b0ee7de6fffc1a` on 2026-11-22. Cloudflare deployment remains independently unverified.
+- **PR #6:** https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/pull/6. PR #6 was **merged into protected main** at commit `8943be00ce2e5d29ecc8312a89b0ee7de6fffc1a` on 2026-11-22. **Cloudflare v0.4 production deployment VERIFIED** by GitHub Actions on 2026-11-22: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085856763. Actual public URL, dataset endpoint, and 24/24 live Chromium interactions passed.
 - GitHub Actions quality run: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085398163 — **28/28 Node tests passed and static production build passed**.
 - GitHub Actions Chromium browser acceptance: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085398138 — **24/24 checks passed**. Used actual benchmark shards and the local preview server. Tests include ten vegetable products, editable assumptions, product selection races, deterministic seed replay, conservation ledger, Monte Carlo maximum 128 trials, reset/stale markers, CSV import, exports, responsive widths 390/768/1512px and zero uncaught browser JavaScript / benchmark network errors.
 - A genuine event-binding bug `document.querySelector` vs `querySelectorAll` originally broke rendering. Fixed in commit `6a4867fc1eeb16b9d33d2da5a0c934eca04c4301` and verified in source + browser acceptance.
@@ -33,8 +33,8 @@ Updated: 2026-11-22 · target release **v0.4.0** · source branch `feat/phases-1
 
 ## Remaining and next actions
 1. **Verified:** PR #6 merged into protected `main` at `8943be00ce2e5d29ecc8312a89b0ee7de6fffc1a`; subsequent main GitHub CI passed: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085708246
-2. Independently verify the Cloudflare production deployment serves v0.4, with source-mode switch, data fetch and live controls. Automated GitHub Actions production acceptance was added under `.github/workflows/production-acceptance.yml`; inspect that workflow's result on `main` before asserting a deployed success.
-3. Review visual design/screenshot acceptance as needed. No need to expose an API token; Cloudflare Git build should auto-deploy the protected main branch.
+2. **VERIFIED:** Cloudflare production serves v0.4 and the attributed dataset; the main-branch `.github/workflows/production-acceptance.yml` run #45085856763 passed all **24/24 interactive live-browser checks**, including 390px mobile, and 128-trial Monte Carlo. The latest main build run #45085856539 also passed.
+3. Production visual screenshots are captured as GitHub Actions artifacts in run #45085856763; review UX polish and contrast/accessibility as appropriate. No need to expose an API token; Cloudflare Git build should auto-deploy the protected main branch.
 4. **Phase 4 is not started**: future joint multi-vegetable procurement subject to shared cold-storage capacity and purchasing budget, mathematical verification of constraint handling and comparative benchmarks.
 5. Only after functional product validation, prepare the assignment recording and student-authored two-page Word discussion.
 
@@ -44,3 +44,10 @@ Updated: 2026-11-22 · target release **v0.4.0** · source branch `feat/phases-1
 - `docs/PHASES_1_3_VALIDATION.md` phase-by-phase defects, fixes and acceptance evidence.
 - `docs/DATA_SOURCE.md` data source hashes, 865 series, dataset license.
 - `.github/workflows/ci.yml` + `.github/workflows/browser-acceptance.yml` for CI.
+
+## Final v0.4 release verification — 2026-11-22
+- Protected main release commit `8943be00ce2e5d29ecc8312a89b0ee7de6fffc1a` merged via PR #6. Latest documentation/production-QA workflow commit `87dfadcdcd53775c5f0108a52a96c825688ee1ed` merged via PR #7.
+- CI run on the final production-workflow merge: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085856539 — PASS.
+- **Real public Cloudflare browser** verification: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085856763 — PASS, 24/24 checks; real catalog and all workflows functional on publicly deployed application, zero uncaught JavaScript/network data errors.
+- Source project, math engine and data verification: 28/28 Node tests and build PASS, https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085398163.
+- **Phases 1, 2, 3: implemented and verified. Phase 4: intentionally NOT started.** Course recording and student-authored Word discussion intentionally deferred.

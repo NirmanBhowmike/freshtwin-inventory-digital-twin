@@ -47,3 +47,11 @@ Do not call this a validated physical-store digital twin. No model can identify 
 - Confirmed rapid product requests select the newest ID, restore seed reproduces chart, 128 paired trials render, CSV and research exports work, inventory ledger reconciles, and 390/768/1512px document widths do not overflow.
 - These are **real Chromium tests against GitHub's preview server**, not an assertion of verified Cloudflare production deployment.
 - Phase 4 remains out of scope until this review is merged and Cloudflare production has been checked.
+
+## Live Cloudflare production acceptance — verified
+
+- After merging Phases 1–3 into protected `main`, a dedicated [public-endpoint validation workflow](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085856763) ran successfully on 2026-11-22.
+- Its preflight verified the production page served `Version 0.4.0` and the attributed FreshRetailNet-50K catalog endpoint was accessible.
+- The same **24/24 Chromium browser checks passed against the public workers.dev URL**. This includes named vegetable/benchmark modes, real dataset, rapid product selection, seed reproducibility, cost/expiration ledger, 128-trial evaluation, exports, mobile and desktop widths, and no uncaught JavaScript or benchmark network errors.
+- The final main branch static build and Node unit checks also passed: [CI run](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085856539).
+- This establishes a functioning deployment, not empirically calibrated costs, validated real lost demand, or global optimization guarantees. Phase 4 remains unstarted.
