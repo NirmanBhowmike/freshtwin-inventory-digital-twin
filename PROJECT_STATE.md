@@ -46,3 +46,8 @@ Synthetic data, cost, initial inventory and product life are assumptions. No val
 
 ## New chat instructions
 Read this file first. Check GitHub latest branch/PR/CI status and public Cloudflare URL before modifying source. Preserve approved requirements; report what is verified vs pending. Work on a feature branch; do not overwrite `main` or remove repository protections. Continue technical implementation without re-asking already answered choices.
+## Cloudflare Workers deployment configuration (2026-11-22)
+- Cloudflare dashboard showed **Workers** Git import, not Pages. `wrangler.jsonc` now specifies static assets from `./dist`.
+- Production commands: `npm run build`, then `npx wrangler deploy`. Production branch: `main`.
+- User must create a dedicated FreshTwin Cloudflare API token (not reuse the token named for the evacuation simulator), authorize GitHub, and deploy. No Cloudflare account access is exposed in this conversation.
+- Verify the `*.workers.dev` public URL and browser interactions after deployment; these are not yet complete.
