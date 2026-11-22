@@ -22,8 +22,8 @@ function svgLineChart(series,width=700,height=236){
 }
 function refresh(){
  state.history=state.loadedCSV||generateHistory(state.sku,state.seed);
- state.comparison=comparePolicies(state.sku,state.settings,state.seed,state.history);
- state.experiment=monteCarlo(state.sku,state.settings,state.seed,state.trials,state.history);
+ state.comparison=comparePolicies(state.sku,state.settings,state.seed,state.loadedCSV);
+ state.experiment=monteCarlo(state.sku,state.settings,state.seed,state.trials,state.loadedCSV);
  $('#sideDataMode').textContent=state.loadedCSV?'Imported CSV':'Synthetic';
  $('#dataBadge').textContent=state.loadedCSV?'USER-IMPORTED CSV':'SYNTHETIC MODE';
  renderOverview();renderInventory();renderExperiment();
