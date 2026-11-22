@@ -71,7 +71,7 @@ The model's stockout-aware adjustment is an availability-based **heuristic**. Th
 
 - Mathematical model: [docs/METHODOLOGY.md](docs/METHODOLOGY.md)
 - Dataset provenance: [docs/DATA_SOURCE.md](docs/DATA_SOURCE.md)
-- Validation and test limitations: [docs/VALIDATION.md](docs/VALIDATION.md)
+- Validation and test limitations: [docs/VALIDATION.md](docs/VALIDATION.md) and [v0.3 independent data audit](docs/QUALITY_REPORT_V03.md)
 - Product requirements: [docs/PRODUCT_REQUIREMENTS.md](docs/PRODUCT_REQUIREMENTS.md) and [docs/PRODUCT_REQUIREMENTS_V03.md](docs/PRODUCT_REQUIREMENTS_V03.md)
 - Project continuity and latest verified state: [PROJECT_STATE.md](PROJECT_STATE.md)
 

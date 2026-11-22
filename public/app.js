@@ -5,7 +5,7 @@ const $$=(selector)=>Array.from(document.querySelectorAll(selector));
 const fmt=(n,d=0)=>Number.isFinite(n)?n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
 const money=n=>'$'+fmt(n,0), pct=n=>(n*100).toFixed(1)+'%';
 const escapeHTML=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state={sku:SKUS[0],seed:42,settings:{leadTime:1,shelfLifeOffset:0,demandMultiplier:1,shortageWeight:1,days:28},history:null,comparison:null,experiment:null,trials:24,day:1,loadedCSV:null,catalog:null,benchmarkHistory:null,currentRecord:null,currentRows:null,loadToken:0,catalogLimit:24,catalogFilter:{search:"",group:"all",sort:"id"}};
+const state={sku:SKUS[0],seed:42,settings:{leadTime:1,shelfLifeOffset:0,demandMultiplier:1,shortageWeight:1,days:28},history:null,comparison:null,experiment:null,trials:24,day:1,loadedCSV:null,catalog:null,benchmarkHistory:null,currentRecord:null,currentRows:null,loadToken:0,catalogLimit:12,catalogFilter:{search:"",group:"all",sort:"id"}};
 const names={baseline:'Observed-sales baseline',corrected:'Stockout-aware reorder point',adaptive:'Freshness-aware optimizer'};
 const tones={baseline:'#a1b5ad',corrected:'#72c8b2',adaptive:'#159f80'};
 let toastHandle=null;
@@ -91,7 +91,7 @@ function renderTradeoff(){
 }
 function renderOverview(){
  const c=state.comparison,base=c.policies[0],aware=c.policies[1],optimized=c.policies[2],m=optimized.metrics, e=c.estimate;
- const cards=[{label:'INVENTORY FILL RATE',value:pct(m.fillRate),note:'Fulfilled units / latent units',icon:'◈',cls:''},{label:'SIMULATED TOTAL COST',value:money(m.cost),note:'Illustrative scenario economics (assumed costs)',icon:'＄',cls:'kpi-blue'},{label:'UNMET DEMAND',value:fmt(m.unmet)+' units',note:'28-day scenario shortfall',icon:'↘',cls:'kpi-peach'},{label:'PERISHED INVENTORY',value:fmt(m.waste)+' units',note:'Modeled expiration, not observed spoilage',icon:'♧',cls:'kpi-lime'}];
+ const cards=[{label:'INVENTORY FILL RATE',value:pct(m.fillRate),note:'Fulfilled units / latent units',icon:'◈',cls:''},{label:'SCENARIO TOTAL COST',value:money(m.cost),note:'Illustrative scenario economics (assumed costs)',icon:'＄',cls:'kpi-blue'},{label:'UNMET DEMAND',value:fmt(m.unmet)+' units',note:'28-day scenario shortfall',icon:'↘',cls:'kpi-peach'},{label:'PERISHED INVENTORY',value:fmt(m.waste)+' units',note:'Modeled expiration, not observed spoilage',icon:'♧',cls:'kpi-lime'}];
  renderStoreGrid();
  $('#kpis').innerHTML=cards.map(x=>`<article class="kpi ${x.cls}"><div class="kpi-label">${x.label}<span class="kpi-icon">${x.icon}</span></div><div class="kpi-value">${x.value}</div><div class="kpi-note">${x.note}</div></article>`).join('');
  const tl=optimized.timeline;
@@ -106,12 +106,12 @@ function renderOverview(){
  $('#demandBars').innerHTML=`<div class="demand-bars"><div class="demand-row"><div class="demand-head"><strong>Recorded sales rate</strong><span>${fmt(e.naive/indexFactor,2)} ${indexFactor>1?'normalized/day':'units/day'}</span></div><div class="demand-track"><span style="width:${100*e.naive/max}%"></span></div></div><div class="demand-row"><div class="demand-head"><strong>Stockout-adjusted estimate</strong><span>${fmt(e.corrected/indexFactor,2)} ${indexFactor>1?'normalized/day':'units/day'}</span></div><div class="demand-track corrected"><span style="width:${100*e.corrected/max}%"></span></div></div><p class="demand-comment">${e.censoredDays} of the last ${Math.min(35,state.history.length)} historical days had unavailable hours. The adjustment estimates unseen demand; actual lost sales remain unknown. Benchmark sales are normalized.</p></div>`;
  const sk=state.sku;
  const shelfSKUS=state.currentRecord?[state.sku]:SKUS;
- $('#shelfVisual').innerHTML=`<div class="shelf-illustration"><div class="shelf-items">${shelfSKUS.map(s=>`<div class="shelf-item" title="${escapeHTML(s.name)}">${s.icon}</div>`).join('')}</div><div class="shelf-bar"></div><div class="shelf-caption"><span>First-expiring-first-out rotation</span><span>5 modeled SKUs</span></div></div><div class="shelf-foot">◷ <span><strong>${escapeHTML(sk.name)}</strong> · assumed shelf life ${Math.max(1,sk.shelfLife+state.settings.shelfLifeOffset)} days</span></div>`;
+ $('#shelfVisual').innerHTML=`<div class="shelf-illustration"><div class="shelf-items">${shelfSKUS.map(s=>`<div class="shelf-item" title="${escapeHTML(s.name)}">${s.icon}</div>`).join('')}</div><div class="shelf-bar"></div><div class="shelf-caption"><span>First-expiring-first-out rotation</span><span>1 selected SKU model</span></div></div><div class="shelf-foot">◷ <span><strong>${escapeHTML(sk.name)}</strong> · assumed shelf life ${Math.max(1,sk.shelfLife+state.settings.shelfLifeOffset)} days</span></div>`;
 }
 function renderInventory(){
  const tl=state.comparison.policies[2].timeline,idx=Math.min(tl.length-1,Math.max(0,state.day-1)),r=tl[idx];
  $('#daySlider').max=tl.length;$('#daySlider').value=idx+1;$('#replayTitle').textContent=`Day ${String(idx+1).padStart(2,'0')} / ${tl.length}`;
- const fields=[['REALIZED DEMAND',r.demand],['FULFILLED SALES',r.sales],['ENDING STOCK',r.inventory],['UNMET DEMAND',r.missing]];
+ const fields=[['SIMULATED DEMAND',r.demand],['FULFILLED SALES',r.sales],['ENDING STOCK',r.inventory],['UNMET DEMAND',r.missing]];
  $('#dayMetrics').innerHTML=fields.map(([k,v])=>`<div class="day-metric"><small>${k}</small><strong>${fmt(v)}</strong></div>`).join('');
  const evt=r.missing?`A stockout prevented ${r.missing} unit(s) of simulated demand from being fulfilled.`:r.expired?`${r.expired} units reached their modeled expiration date.`:r.arrived?`${r.arrived} units arrived from a previously placed purchase order.`:'The inventory state advanced without a stockout or expiration event.';
  renderFlowLaboratory(r);
@@ -221,10 +221,10 @@ function bind(){
  $('#openLab').addEventListener('click',()=>navigate('experiments'));
  $('#storeToReplay').addEventListener('click',()=>navigate('inventory'));
  $('#sourceToggle').addEventListener('click',()=>{const detail=$('#sourceDetail'),opened=detail.hidden;detail.hidden=!opened;$('#sourceToggle').setAttribute('aria-expanded',String(opened));});
- $('#catalogSearch').addEventListener('input',e=>{state.catalogFilter.search=e.target.value;state.catalogLimit=24;renderCatalog();});
- $('#catalogCategory').addEventListener('change',e=>{state.catalogFilter.group=e.target.value;state.catalogLimit=24;renderCatalog();});
- $('#catalogSort').addEventListener('change',e=>{state.catalogFilter.sort=e.target.value;state.catalogLimit=24;renderCatalog();});
- $('#catalogMore').addEventListener('click',()=>{state.catalogLimit+=24;renderCatalog();});
+ $('#catalogSearch').addEventListener('input',e=>{state.catalogFilter.search=e.target.value;state.catalogLimit=12;renderCatalog();});
+ $('#catalogCategory').addEventListener('change',e=>{state.catalogFilter.group=e.target.value;state.catalogLimit=12;renderCatalog();});
+ $('#catalogSort').addEventListener('change',e=>{state.catalogFilter.sort=e.target.value;state.catalogLimit=12;renderCatalog();});
+ $('#catalogMore').addEventListener('click',()=>{state.catalogLimit+=12;renderCatalog();});
  $('#skuSelect').addEventListener('change',e=>{if(e.target.value.startsWith('FRN-')){selectBenchmarkProduct(Number(e.target.value.slice(4)));return;}state.sku=SKUS.find(s=>s.id===e.target.value)||SKUS[0];state.loadedCSV=null;state.day=1;refresh();toast('Selected SKU loaded.');});
  $('#seedInput').addEventListener('change',e=>{state.seed=Math.max(1,Math.min(999999,Math.floor(Number(e.target.value)||42)));e.target.value=state.seed;state.day=1;refresh();});
  $('#replayBtn').addEventListener('click',()=>{state.seed=state.seed+1;$('#seedInput').value=state.seed;state.day=1;refresh();toast('New reproducible scenario generated.');});

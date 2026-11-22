@@ -64,3 +64,11 @@ Read this file first. Check GitHub latest branch/PR/CI status and public Cloudfl
 - Local tests at the time of implementation: 16/16 pass; `npm run build` passes. **Data ingestion and public Cloudflare browser verification remain PENDING until explicitly verified.** Do not assert real source records are deployed before the workflow succeeds and the resulting catalog is inspected.
 - Live URL supplied by user: https://freshtwin-inventory-digital-twin.nirman-bhowmike.workers.dev/ . This link has not been verified with a live browser in the current tool environment.
 - Next: run dataset import workflow on the feature branch; verify 865 products and 16 shards, inspect correctness/size; run GitHub CI; merge reviewed PR; confirm Workers deployment and browser. Then calibrate model and develop stronger empirical experiments.
+
+## Verified importer and browser QA (2026-11-22)
+- GitHub data ingest workflow run #45078880043 completed successfully and created commit `b956d38eb50d69c0b4c01958e9daca0fb569ae59` on `feat/freshtwin-real-data-catalog`.
+- Publisher raw SHA256 `6706832db892bbae4969c19d87e07975d2543d2ba7d7d4756360654785de5a3d`.
+- **Real data cross-shard audit**: 865 unique products, 865 representative 90-day histories, 77,850 real observations, 16 JSON shards, 0 invalid or misaligned records, hourly normalized sales sum to daily normalized sales (max difference ≈ 7.11e-15).
+- Browser QA used Playwright Chromium's `page.set_content` in the restricted local environment with **an explicitly synthetic UI fixture** to test interaction mechanics, not the actual live public catalog. Search/selection/navigation/stockout chart/experiments passed, no JS errors, desktop and mobile within viewport.
+- Local `npm run check` and `npm run build` succeed; 16 tests.
+- **Cloudflare live application behavior remains unverified** until source is merged and public deployed URL is checked. No claim of production data availability before this.
