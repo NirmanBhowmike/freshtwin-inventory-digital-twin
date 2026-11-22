@@ -1,7 +1,7 @@
 {
   "name": "freshtwin-inventory-digital-twin",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Research-oriented digital twin prototype for perishable fresh-food inventory decisions.",
   "scripts": {

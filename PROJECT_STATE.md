@@ -1,12 +1,12 @@
 # FreshTwin — authoritative cross-chat project handoff
 
-Updated: 2026-11-22 (v0.1 released to protected main; Cloudflare deployment pending)
+Updated: 2026-11-22 (v0.2 visual/scientific transparency upgrade; release gate pending)
 
 ## Identifiers
 - Repository: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin
 - Public repo; owner controls changes. Protected `main` ruleset ID: `27859261`, enforcement `active` verified from GitHub API.
-- Development branch: `feat/freshtwin-functional-prototype`.
-- Preferred host: Cloudflare Pages with Git integration; **Cloudflare connection and deployment NOT yet verified**.
+- Release approach: all changes via feature branch, GitHub CI and review PR into protected `main`.
+- Hosting: Cloudflare Workers (Git integration and static assets); user provided `https://freshtwin-inventory-digital-twin.nirman-bhowmike.workers.dev/`. Remote HTTP/browser fetch remains blocked in this execution environment; **live UI behavior not verified here**.
 - Project: INEN-5350-48F Production & Inventory Control, Dr. James Curry.
 - Formal title: Intelligent Fresh-Food Inventory Digital Twin: Stockout-Aware Demand Estimation and Stochastic Replenishment Optimization for Perishable Retail Systems.
 - Submission: 2-page personally written Word report, screenshots, brief result quality discussion, 1–2 articles, and a recorded working demonstration; deadline 2026-12-01 at 11:59 PM CST.
@@ -30,6 +30,13 @@ Updated: 2026-11-22 (v0.1 released to protected main; Cloudflare deployment pend
 ## Scientific disclosure
 Synthetic data, cost, initial inventory and product life are assumptions. No validated live store digital twin or measured retail cost savings. Do not claim FreshRetailNet-50K has been imported, or actual product demand reconstructed; not implemented. Methods are heuristic/approximate, not optimality-certified. See `docs/METHODOLOGY.md` and `docs/VALIDATION.md`.
 
+## Verified v0.2 development checkpoint (2026-11-22)
+- Added interactive simulated store board, visual day-level product flow, exact inventory age-cohort view, service-versus-waste chart, and paired-cost confidence intervals.
+- Local `npm run check`: **11/11 tests pass** (including age-cohort reconciliation and interval sanity); `npm run build`: succeeds.
+- Browser automation/browser screenshots are blocked by the execution environment administrative policy; visual QA remains unverified and must be completed after deployment.
+- The visual store models five SKUs independently; no shared physical shelf capacity, product substitution or real retail integration is claimed.
+- New release requires merging only after CI passes.
+
 ## Verified release checkpoint (2026-11-22)
 - PR #1 was merged into `main` by squash commit `a7589180553609f9cde0aac64b4799dae27ccdee`.
 - The GitHub Actions run on `main` completed successfully: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45074388948
@@ -39,15 +46,12 @@ Synthetic data, cost, initial inventory and product life are assumptions. No val
 
 ## Next checkpoints
 - Repository source is merged to main; keep working in a new feature branch for further changes and checking CI before merging.
-- Connect Cloudflare Pages project to GitHub `main` and verify actual public deployment URL.
-- Run browser UI test and tune charts/mobile screens.
+- Confirm Cloudflare Workers Git deployment updates the given workers.dev URL following changes to `main`, and verify public page controls.
+- Run browser UI test and tune charts/mobile screens; blocked in current tool environment.
+- Deepen scientific rigor: replace heuristic stockout correction with calibrated, held-out evaluated censored-demand model; implement documented lead-time/expiry constrained optimization and compare with transparent baseline.
+- Evaluate a legally usable real dataset (FreshRetailNet-50K is a candidate, not integrated), preserving normalized-data and absent-inventory caveats.
 - Research improvement: obtain licensed historical retail data and document real versus assumed variables, if feasible.
 - Later: capture verified screenshots, recording, and write the two-page submission in user's own voice.
 
 ## New chat instructions
 Read this file first. Check GitHub latest branch/PR/CI status and public Cloudflare URL before modifying source. Preserve approved requirements; report what is verified vs pending. Work on a feature branch; do not overwrite `main` or remove repository protections. Continue technical implementation without re-asking already answered choices.
-## Cloudflare Workers deployment configuration (2026-11-22)
-- Cloudflare dashboard showed **Workers** Git import, not Pages. `wrangler.jsonc` now specifies static assets from `./dist`.
-- Production commands: `npm run build`, then `npx wrangler deploy`. Production branch: `main`.
-- User must create a dedicated FreshTwin Cloudflare API token (not reuse the token named for the evacuation simulator), authorize GitHub, and deploy. No Cloudflare account access is exposed in this conversation.
-- Verify the `*.workers.dev` public URL and browser interactions after deployment; these are not yet complete.

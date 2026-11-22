@@ -103,7 +103,7 @@ export function runPolicy(sku, history, settings={}, policy='adaptive', seed=42)
    const m=policyDecision(policy,sku,batches,pipeline,forecast,day,cfg,optRng);
    const order=m.quantity;
    if(order){const arrivalDay=day+cfg.leadTime+1;pipeline.push({qty:order,day:arrivalDay});spent+=order*sku.cost;totalOrders+=order;}
-   timeline.push({day:day+1,demand,sales,missing,inventory:batches.reduce((s,b)=>s+b.qty,0),expired,arrived,order,stockout:missing>0});
+   timeline.push({day:day+1,demand,sales,missing,inventory:batches.reduce((s,b)=>s+b.qty,0),expired,arrived,order,stockout:missing>0,ageCohorts:batches.map(b=>({remainingLife:b.life,qty:b.qty})).filter(b=>b.qty>0),pipeline: pipeline.filter(p=>p.day>day).map(p=>({dueDay:p.day+1,qty:p.qty}))});
  }
  const totalCost=spent+holding+disposal+lostPenalty;
  return {policy,forecast,estimate,metrics:{fillRate:totalDemand?totalSales/totalDemand:1,cost:totalCost,waste,unmet,orders:totalOrders,revenue,netValue:revenue-totalCost,holding,disposal,purchases:spent,shortagePenalty:lostPenalty},timeline,assumptions:cfg};
@@ -125,10 +125,13 @@ export function monteCarlo(sku, settings={}, seed=42, trials=24, inputHistory=nu
    const runs=comparePolicies(sku,{...settings},scenarioSeed,history).policies;
    for(const p of runs)out[p.policy].push(p.metrics);
  }
+ const sampleCI = values => {const m=mean(values),n=values.length,variance=n>1?values.reduce((s,x)=>s+(x-m)**2,0)/(n-1):0;const half=1.96*Math.sqrt(variance/n);return [m-half,m+half];};
+ const pairedBenefits=out.baseline.map((b,i)=>b.cost-out.adaptive[i].cost);
+ const pairedCI=sampleCI(pairedBenefits);
  return Object.fromEntries(Object.entries(out).map(([policy,values])=>{
    const costs=values.map(x=>x.cost).sort((a,b)=>a-b);
    const tail=costs.slice(Math.floor(costs.length*.9));
-   return [policy,{cost:mean(costs),fillRate:mean(values.map(x=>x.fillRate)),waste:mean(values.map(x=>x.waste)),cvar90:mean(tail),trials:values.length}];
+   return [policy,{cost:mean(costs),fillRate:mean(values.map(x=>x.fillRate)),waste:mean(values.map(x=>x.waste)),cvar90:mean(tail),trials:values.length,costCI95:sampleCI(costs),pairedCostBenefit:policy==='adaptive'?{mean:mean(pairedBenefits),ci95:pairedCI}:null}];
  }));
 }
 /** User data must be explicitly supplied as physical-unit sales. No network/file persistence. */

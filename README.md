@@ -6,6 +6,13 @@ FreshTwin is an interactive, browser-based *digital-twin research prototype* dev
 
 > **Scientific scope.** The starter scenario uses **synthetic historical observations, inventory state, SKU prices, product shelf lives and costs**. It is not a live-connected retail system. Simulated policy results must not be represented as verified field savings. A real-world digital twin would require a continuously synchronized physical data source.
 
+## v0.2 interface and evidence improvements
+
+- Interactive visual store board: click one of five modeled SKUs to change the audited simulation.
+- Day-by-day material-flow dashboard and actual age-cohort inventory display reconciled to the mathematical ledger.
+- Service-versus-waste decision plot and paired approximate 95% confidence intervals for differences in simulation cost.
+- No fictitious shelf-capacity constraints or statistically identified demand claims are introduced by these visual changes.
+
 ## What works
 
 - Deterministic 90-day simulated demand/sales/stockout history for five illustrative SKUs
@@ -33,22 +40,17 @@ npm run build  # creates deployable static assets in dist/
 
 ## Cloudflare deployment
 
-The supported deployment target is **Cloudflare Workers with Static Assets**. A checked-in `wrangler.jsonc` points Wrangler to the generated `./dist` assets and names the Worker. Under **Workers & Pages → Create application → Connect GitHub**, choose this repository and enter:
+Deploy as **Cloudflare Pages** using Git integration:
 
 | Setting | Value |
 |---|---|
 | Production branch | `main` |
-| Project name | `freshtwin-inventory-digital-twin` |
+| Framework preset | `None` |
 | Build command | `npm run build` |
-| Deploy command | `npx wrangler deploy` |
+| Build output directory | `dist` |
 | Root directory | `/` |
-| Preview builds | Optional; disable for the first production setup |
-| Access protection | Disabled if public viewing is intended |
-| API token | Use a new FreshTwin-specific token; never paste secrets into this repository |
 
-The initial static release does not need a database or backend credentials. Deploying requires Cloudflare account authorization, and the resulting public `*.workers.dev` URL must be verified in a browser. For users creating a **Pages** project instead, the same static build output `dist` can also be deployed as Pages assets.
-
-Cloudflare setup and live browser checks remain external checkpoints; do not claim production deployment before they succeed.
+This prototype is fully static, does not request a Cloudflare API key, does not require backend infrastructure, and can be published on a `*.pages.dev` address. The `feat/freshtwin-functional-prototype` branch is intended for review prior to merging to `main`. Cloudflare deployment still requires repository authorization in the Cloudflare account.
 
 ## CSV schema
 
