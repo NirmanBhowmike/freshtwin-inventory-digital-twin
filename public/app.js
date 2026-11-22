@@ -1,11 +1,14 @@
-import {SKUS, generateHistory,comparePolicies,monteCarlo,parseUserCSV} from './engine.js';
+import {SKUS,MODEL_VERSION,generateHistory,comparePolicies,monteCarlo,parseUserCSV,syntheticDemandValidation} from './engine.js';
+import {VEGETABLES,validateVegetable} from './vegetables.js';
+import {createWorkspace} from './workspace.js';
 import {parseCatalog,decodeSeries,buildScenarioSku,toScenarioHistory,pseudoStockoutBacktest,categoryLabel,filterCatalog,formatId,BENCHMARK_URL,MODEL_INDEX_MULTIPLIER} from './empirical.js';
 const $=(selector)=>document.querySelector(selector);
 const $$=(selector)=>Array.from(document.querySelectorAll(selector));
 const fmt=(n,d=0)=>Number.isFinite(n)?n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
 const money=n=>'$'+fmt(n,0), pct=n=>(n*100).toFixed(1)+'%';
 const escapeHTML=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state={sku:SKUS[0],seed:42,settings:{leadTime:1,shelfLifeOffset:0,demandMultiplier:1,shortageWeight:1,days:28},history:null,comparison:null,experiment:null,trials:24,day:1,loadedCSV:null,catalog:null,benchmarkHistory:null,currentRecord:null,currentRows:null,loadToken:0,catalogLimit:12,catalogFilter:{search:"",group:"all",sort:"id"}};
+const state={mode:'vegetable',vegOverrides:{},sku:VEGETABLES[0],seed:42,settings:{leadTime:VEGETABLES[0].leadTime,shelfLifeOffset:0,demandMultiplier:1,shortageWeight:1,days:28},history:null,comparison:null,experiment:null,trials:24,day:1,dirty:false,loading:false,loadedCSV:null,catalog:null,benchmarkHistory:null,currentRecord:null,currentRows:null,loadToken:0,catalogLimit:12,catalogFilter:{search:"",group:"all",sort:"id"}};
+let workspace=null;
 const names={baseline:'Observed-sales baseline',corrected:'Stockout-aware reorder point',adaptive:'Freshness-aware optimizer'};
 const tones={baseline:'#a1b5ad',corrected:'#72c8b2',adaptive:'#159f80'};
 let toastHandle=null;
@@ -22,20 +25,33 @@ function svgLineChart(series,width=700,height=236){
  return html+'</svg>';
 }
 function refresh(){
- state.history=state.loadedCSV||state.benchmarkHistory||generateHistory(state.sku,state.seed);
+ state.history=state.loadedCSV||(state.mode==='benchmark'?state.benchmarkHistory:null)||generateHistory(state.sku,state.seed);
  state.comparison=comparePolicies(state.sku,state.settings,state.seed,state.history);
  state.experiment=monteCarlo(state.sku,state.settings,state.seed,state.trials,state.history);
- $('#sideDataMode').textContent=state.loadedCSV?'Imported CSV':state.currentRecord?'FreshRetailNet':'Demo scenario';
- $('#dataBadge').textContent=state.loadedCSV?'IMPORTED CSV':state.currentRecord?'FRESHRETAILNET-50K':'DEMO SCENARIO';
+ state.dirty=false;const dirty=$('#dirtyResults');if(dirty)dirty.hidden=true;
+ $('#exportBtn').disabled=state.loading;$('#ledgerExportBtn').disabled=state.loading;
+ $('#sideDataMode').textContent=state.loadedCSV?'Imported CSV':state.mode==='benchmark'?'FreshRetailNet':'Vegetable demo';
+ $('#dataBadge').textContent=state.loadedCSV?'IMPORTED CSV':state.mode==='benchmark'?'FRESHRETAILNET-50K':'VEGETABLE DEMONSTRATION';
+ workspace?.render();
  updateSourceStatus();renderObservedHistory();
  renderOverview();renderInventory();renderExperiment();
 }
 function selectStoreSku(id){
- if(id.startsWith('FRN-')){selectBenchmarkProduct(Number(id.slice(4)));return;}
+ if(id.startsWith('FRN-')){setMode('benchmark',Number(id.slice(4)));return;}
+ if(state.mode==='vegetable'){selectVegetable(id);return;}
  const found=SKUS.find(x=>x.id===id);if(!found)return;
- state.sku=found;state.loadedCSV=null;state.day=1;$('#skuSelect').value=id;$('#importMessage').textContent='';refresh();toast(`${found.name} inventory model selected.`);
+ state.sku=found;state.loadedCSV=null;state.day=1;$('#skuSelect').value=id;$('#importMessage').textContent='';refresh();
 }
 function renderStoreGrid(){
+ if(state.mode==='vegetable'){
+   $('#storeCountBadge').textContent='10 NAMED VEGETABLES · ILLUSTRATIVE';
+   $('#storeGrid').innerHTML=VEGETABLES.map(v=>{
+     const sk=state.vegOverrides[v.id]||v,active=sk.id===state.sku.id;
+     return `<button type="button" class="store-card ${active?'selected':''}" data-store-sku="${sk.id}" aria-pressed="${active}"><span class="store-card-top"><span class="store-product-icon" style="--product-color:${sk.hue}">${sk.icon}</span><span class="store-signal good"><i></i> SIMULATED</span></span><span class="store-product-name">${escapeHTML(sk.name)}</span><span class="store-product-category">${escapeHTML(sk.category)} · ${sk.shelfLife}-day shelf life</span><span class="store-capacity"><span style="width:${Math.min(100,sk.initialInventory/Math.max(1,sk.demand*3)*100)}%"></span></span><span class="store-product-foot"><span><strong>${fmt(sk.initialInventory)}</strong> opening units</span><strong>${fmt(sk.demand)}/day assumption</strong></span></button>`;
+   }).join('');
+   document.querySelectorAll('[data-store-sku]').forEach(btn=>btn.addEventListener('click',()=>selectVegetable(btn.dataset.storeSku)));
+   return;
+ }
  if(state.catalog?.catalog?.length){
   const cat=state.catalog.catalog, selected=state.currentRecord;
   const related=selected?[selected,...cat.filter(x=>x.category[0]===selected.category[0]&&x.id!==selected.id).slice(0,7)]:cat.slice(0,8);
@@ -99,56 +115,78 @@ function renderOverview(){
  $('#chartFoot').innerHTML=`<span>${tl.filter(x=>x.stockout).length} simulated stockout days</span><span>Demand path seed: ${state.seed}</span>`;
  $('#recommendation').innerHTML=`${fmt(m.orders)} <span style="font-size:14px;font-weight:600;color:#93ada1;letter-spacing:0">units</span>`;
  const best=[...c.policies].sort((a,b)=>a.metrics.cost-b.metrics.cost)[0];
- $('#recommendationText').textContent=`The bounded freshness-aware policy orders ${fmt(m.orders)} units across 28 simulated days. Lowest realized cost in this scenario: ${names[best.policy]}.`;
+ $('#recommendationText').textContent=`The sampled freshness-aware policy orders ${fmt(m.orders)} units across ${state.settings.days} simulated days. Lowest modeled cost in this scenario: ${names[best.policy]}.`;
  $('#policyList').innerHTML=c.policies.map(p=>`<div class="policy-row"><div><div class="policy-name">${names[p.policy]}</div><div class="policy-sub">28-day simulation result</div></div><div class="policy-result">${money(p.metrics.cost)}<small>${pct(p.metrics.fillRate)} fill rate</small></div></div>`).join('');
- const indexFactor=state.currentRecord&&!state.loadedCSV?MODEL_INDEX_MULTIPLIER:1;
+ const indexFactor=state.mode==='benchmark'&&state.currentRecord&&!state.loadedCSV?MODEL_INDEX_MULTIPLIER:1;
  const max=Math.max(e.naive,e.corrected,1)*1.2;
  $('#demandBars').innerHTML=`<div class="demand-bars"><div class="demand-row"><div class="demand-head"><strong>Recorded sales rate</strong><span>${fmt(e.naive/indexFactor,2)} ${indexFactor>1?'normalized/day':'units/day'}</span></div><div class="demand-track"><span style="width:${100*e.naive/max}%"></span></div></div><div class="demand-row"><div class="demand-head"><strong>Stockout-adjusted estimate</strong><span>${fmt(e.corrected/indexFactor,2)} ${indexFactor>1?'normalized/day':'units/day'}</span></div><div class="demand-track corrected"><span style="width:${100*e.corrected/max}%"></span></div></div><p class="demand-comment">${e.censoredDays} of the last ${Math.min(35,state.history.length)} historical days had unavailable hours. The adjustment estimates unseen demand; actual lost sales remain unknown. Benchmark sales are normalized.</p></div>`;
  const sk=state.sku;
- const shelfSKUS=state.currentRecord?[state.sku]:SKUS;
+ const shelfSKUS=state.mode==='vegetable'?VEGETABLES.slice(0,6):(state.currentRecord?[state.sku]:SKUS);
  $('#shelfVisual').innerHTML=`<div class="shelf-illustration"><div class="shelf-items">${shelfSKUS.map(s=>`<div class="shelf-item" title="${escapeHTML(s.name)}">${s.icon}</div>`).join('')}</div><div class="shelf-bar"></div><div class="shelf-caption"><span>First-expiring-first-out rotation</span><span>1 selected SKU model</span></div></div><div class="shelf-foot">◷ <span><strong>${escapeHTML(sk.name)}</strong> · assumed shelf life ${Math.max(1,sk.shelfLife+state.settings.shelfLifeOffset)} days</span></div>`;
 }
 function renderInventory(){
  const tl=state.comparison.policies[2].timeline,idx=Math.min(tl.length-1,Math.max(0,state.day-1)),r=tl[idx];
  $('#daySlider').max=tl.length;$('#daySlider').value=idx+1;$('#replayTitle').textContent=`Day ${String(idx+1).padStart(2,'0')} / ${tl.length}`;
- const fields=[['SIMULATED DEMAND',r.demand],['FULFILLED SALES',r.sales],['ENDING STOCK',r.inventory],['UNMET DEMAND',r.missing]];
+ const fields=[['OPENING STOCK',r.openingInventory],['ARRIVALS',r.arrived],['FULFILLED SALES',r.sales],['ENDING STOCK',r.inventory]];
  $('#dayMetrics').innerHTML=fields.map(([k,v])=>`<div class="day-metric"><small>${k}</small><strong>${fmt(v)}</strong></div>`).join('');
  const evt=r.missing?`A stockout prevented ${r.missing} unit(s) of simulated demand from being fulfilled.`:r.expired?`${r.expired} units reached their modeled expiration date.`:r.arrived?`${r.arrived} units arrived from a previously placed purchase order.`:'The inventory state advanced without a stockout or expiration event.';
  renderFlowLaboratory(r);
  $('#dayEvent').innerHTML=`<strong>${r.stockout?'⚠ Stockout recorded':'✓ Inventory state updated'}</strong>${evt} Orders placed today: ${r.order} units. Receipts: ${r.arrived} units. Expired: ${r.expired} units.`;
- $('#ledgerTable tbody').innerHTML=tl.map(r=>`<tr class="${r.missing?'warn':''}"><td>Day ${String(r.day).padStart(2,'0')}</td><td>${r.demand}</td><td>${r.sales}</td><td>${r.missing}</td><td>${r.arrived}</td><td>${r.expired}</td><td>${r.order}</td><td>${r.inventory}</td></tr>`).join('');
+ $('#ledgerTable tbody').innerHTML=tl.map(r=>`<tr class="${r.missing?'warn':''}"><td>Day ${String(r.day).padStart(2,'0')}</td><td>${r.openingInventory}</td><td>${r.demand}</td><td>${r.sales}</td><td>${r.missing}</td><td>${r.arrived}</td><td>${r.expired}</td><td>${r.order}</td><td>${r.inventory}</td></tr>`).join('');
 }
 function renderExperiment(){
  const e=state.experiment;
  const max=Math.max(...Object.values(e).map(p=>p.cost),1)*1.12;
  $('#comparisonChart').innerHTML=Object.entries(e).map(([name,p])=>`<div class="compare-row"><div class="compare-head"><strong>${names[name]}</strong><span>${money(p.cost)}</span></div><div class="compare-track"><div style="width:${(p.cost/max*100).toFixed(2)}%;background:${tones[name]}"></div></div></div>`).join('');
  const sorted=Object.entries(e).sort((a,b)=>a[1].cost-b[1].cost),best=sorted[0];
- $('#experimentSummary').innerHTML=`<strong>Lowest mean modeled cost: ${names[best[0]]}.</strong> Across ${state.trials} paired runs, it achieved ${money(best[1].cost)} average cost and ${pct(best[1].fillRate)} fill rate. This is a simulation result, not evidence of realized retail savings.`;
+ const bestService=Object.entries(e).sort((a,b)=>b[1].fillRate-a[1].fillRate)[0];
+ $('#experimentSummary').innerHTML=`<strong>Lowest modeled cost: ${names[best[0]]}; highest service: ${names[bestService[0]]}.</strong> Across ${state.trials} paired trials, the lowest-cost policy averaged ${money(best[1].cost)} and ${pct(best[1].fillRate)} fill rate. The highest service policy averaged ${pct(bestService[1].fillRate)}. All monetary inputs are illustrative.`;
+ const gap=e.adaptive.cost-e.baseline.cost;
+ $('#modelInsight').textContent=`Why the policies differ: the freshness-aware strategy costs ${money(e.adaptive.cost)} versus ${money(e.baseline.cost)} for the sales baseline (${gap>=0?'+':''}${money(gap)}). Its modeled cost standard deviation is ${money(e.adaptive.stdCost)}. ${e.adaptive.waste>0?`Expired stock averaged ${fmt(e.adaptive.waste,1)} units per trial, emerging from the simulated batch lifetimes.`:'No expiration occurred here. Shorter shelf life or a demand collapse can reveal spoilage trade-offs.'} CVaR90 summarizes only the worst simulated 10%, so small trial counts make the tail estimate unstable.`;
  const paired=e.adaptive.pairedCostBenefit;
  const [lower,upper]=paired.ci95;
  $('#pairedInterval').innerHTML=`<span class="interval-caption">PAIRED COST DIFFERENCE · SALES BASELINE − FRESHNESS SEARCH</span><strong>${paired.mean>=0?'+':'−'}${money(Math.abs(paired.mean))} <small>per 28-day trial</small></strong><p>Approximate 95% interval: ${money(lower)} to ${money(upper)}. ${lower>0?'Entire interval favors freshness-aware search.':upper<0?'Entire interval favors the sales baseline.':'Interval crosses zero; direction is inconclusive under this simulation.'} These are model-based intervals, not field-validated savings.</p>`;
  renderTradeoff();
  $('#researchTable tbody').innerHTML=Object.entries(e).map(([p,m])=>`<tr><td><strong>${names[p]}</strong></td><td>${money(m.cost)}</td><td>${pct(m.fillRate)}</td><td>${fmt(m.waste,1)}</td><td>${money(m.cvar90)}</td></tr>`).join('');
+ const pieces=[['acquisitionNet','Net inventory consumption'],['holding','Storage and holding'],['disposal','Expired stock disposal'],['shortagePenalty','Unmet-demand penalty']];
+ $('#costBreakdown').innerHTML=Object.entries(e).map(([policy,result])=>{
+   const c=result.costComponents;
+   const list=pieces.map(([k,label])=>`<span><small>${label}</small><strong>${money(c[k])}</strong></span>`).join('');
+   return `<article class="cost-breakdown-item"><h3>${names[policy]}</h3><div class="cost-pieces">${list}</div><div class="cost-reconciled">Sum of components: ${money(Object.values(c).reduce((a,b)=>a+b,0))} · mean total: ${money(result.cost)}</div></article>`;
+ }).join('');
+ $('#convergenceSummary').textContent='Freshness-aware mean modeled cost by independent paired trial count: '+e.adaptive.convergence.map(p=>`${p.trials} trials: ${money(p.meanCost)}`).join(' · ')+'. Stabilization across trial counts is a numerical diagnostic, not proof of field performance.';
+ $('#syntheticValidation').textContent=syntheticDemandValidation(state.sku,state.seed,[.55,.85,1.15],6).map(r=>`Capacity ${fmt(r.stockFactor,2)}×: ${pct(r.stockoutRate)} censored · raw MAE ${fmt(r.naiveMAE,2)} / adjusted MAE ${fmt(r.correctedMAE,2)}`).join(' | ')+' · Controlled synthetic known-demand diagnostic only; not actual benchmark lost-demand recovery.';
 }
 function settingsFromControls(){state.settings={days:28,demandMultiplier:Number($('#demandRange').value)/100,leadTime:Number($('#leadRange').value),shelfLifeOffset:Number($('#shelfRange').value),shortageWeight:Number($('#shortageRange').value)/10};state.trials=Number($('#trialRange').value);$('#demandValue').textContent=Math.round(state.settings.demandMultiplier*100)+'%';$('#leadValue').textContent=state.settings.leadTime+' day'+(state.settings.leadTime===1?'':'s');$('#shelfValue').textContent=(state.settings.shelfLifeOffset>0?'+':'')+state.settings.shelfLifeOffset+' days';$('#shortageValue').textContent=state.settings.shortageWeight.toFixed(1)+'×';$('#trialValue').textContent=state.trials+' runs';}
 const viewData={overview:['Operations overview','OPERATIONS INTELLIGENCE · DIGITAL TWIN','Fresh food, smarter decisions.','A transparent simulation and optimization workbench for stockout-aware demand and perishable inventory.'],inventory:['Inventory twin','SIMULATION ENGINE · DAILY STATE','An operational twin you can inspect.','Follow every stock movement through the inventory and expiration model.'],experiments:['Decision lab','STOCHASTIC OPTIMIZATION · POLICY BENCHMARK','Decisions, evaluated under uncertainty.','Compare replenishment policies using seeded Monte Carlo trials and measurable outcomes.'],methodology:['Methodology','RESEARCH DESIGN · OPEN ASSUMPTIONS','Built to be scrutinized.','Audit the mathematical assumptions, dataset provenance and validation scope.']};
 function navigate(view){if(!viewData[view])view='overview';$$('.view').forEach(el=>el.classList.toggle('active',el.id===view));$$('[data-nav]').forEach(el=>el.classList.toggle('active',el.dataset.nav===view));const [crumb,eyebrow,title,subtitle]=viewData[view];$('#breadcrumb').textContent=crumb;$('#pageEyebrow').textContent=eyebrow;$('#pageTitle').innerHTML=escapeHTML(title).replace(/\.$/,'<span class="heading-dot">.</span>');$('#pageSubtitle').textContent=subtitle;window.location.hash=view;window.scrollTo({top:0,behavior:'instant'});}
 function downloadText(filename,data,type='text/plain'){const blob=new Blob([data],{type});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function csvValue(s){return '"'+String(s).replaceAll('"','""')+'"';}
-function exportLedger(){const t=state.comparison.policies[2].timeline;const rows=['day,demand,sales,lost,arrivals,expired,orders,closing_stock',...t.map(x=>[x.day,x.demand,x.sales,x.missing,x.arrived,x.expired,x.order,x.inventory].join(','))];downloadText('freshtwin-inventory-ledger.csv',rows.join('\n'),'text/csv');toast('Daily inventory ledger exported.');}
-function exportResults(){const payload={project:'FreshTwin',version:'0.3.0',dataSource:state.loadedCSV?'user-supplied browser CSV':state.currentRecord?'FreshRetailNet-50K real normalized history + assumed scenario parameters':'synthetic illustrated history',sku:state.sku.id,seed:state.seed,settings:state.settings,historyMetrics:state.comparison.estimate,policies:state.comparison.policies.map(x=>({policy:x.policy,metrics:x.metrics})),monteCarlo:state.experiment,trials:state.trials,dataset:state.catalog?{name:state.catalog.dataset,sha256:state.catalog.rawSha256,license:state.catalog.license,product:state.currentRecord?.id,store:state.currentRecord?.store}:null,disclaimer:'Observed benchmark sales are normalized. Inventory quantities, aging, demand simulations and monetary metrics are scenario assumptions, not observed store outcomes.'};downloadText('freshtwin-research-results.json',JSON.stringify(payload,null,2),'application/json');toast('Research results downloaded.');}
+function exportLedger(){const t=state.comparison.policies[2].timeline;const rows=['day,opening_stock,demand,sales,lost,arrivals,expired,orders,closing_stock,outstanding_orders',...t.map(x=>[x.day,x.openingInventory,x.demand,x.sales,x.missing,x.arrived,x.expired,x.order,x.inventory,x.pipeline.reduce((sum,p)=>sum+p.qty,0)].join(','))];downloadText('freshtwin-inventory-ledger.csv',rows.join('\n'),'text/csv');toast('Daily inventory ledger exported.');}
+function exportResults(){
+ const payload={project:'FreshTwin',modelVersion:MODEL_VERSION,executedAt:new Date().toISOString(),dataMode:state.mode,sku:state.sku.id,product:state.sku.name,
+  skuScenarioAssumptions:{...state.sku},seed:state.seed,settings:{...state.settings},
+  historyMetrics:state.comparison.estimate,evaluation:state.comparison.evaluation,
+  policies:state.comparison.policies.map(x=>({policy:x.policy,metrics:x.metrics,assumptions:x.assumptions})),
+  monteCarlo:state.experiment,trials:state.trials,
+  dataset:state.mode==='benchmark'&&state.catalog?{name:state.catalog.dataset,sha256:state.catalog.rawSha256,license:state.catalog.license,product:state.currentRecord?.id,store:state.currentRecord?.store}:null,
+  limitations:'Benchmark records are normalized and anonymized. Future demand and cost outcomes are synthetic assumptions; no actual lost demand or observed savings are identified. Initial and terminal inventory are capitalized at cost for scenario comparison.'
+ };
+ downloadText('freshtwin-research-results.json',JSON.stringify(payload,null,2),'application/json');toast('Fully attributed results exported.');
+}
+
 const benchmarkShards=new Map();
 function updateSourceStatus(){
- const real=Boolean(state.currentRecord&&!state.loadedCSV), imported=Boolean(state.loadedCSV);
- $('#sourceState').textContent=imported?'User-imported observations':real?'FreshRetailNet-50K · observed sales':'Scenario demo data';
- $('#sourceCaption').textContent=imported?'Session-only CSV · scenario assumptions apply':real?`Product ${formatId(state.currentRecord.id)} · Store ${state.currentRecord.store} · 90 days · normalized sales`:'Loading verified benchmark catalog, or using a clearly labeled fallback';
+ const real=Boolean(state.mode==='benchmark'&&state.currentRecord&&!state.loadedCSV), imported=Boolean(state.loadedCSV);
+ $('#sourceState').textContent=imported?'User-imported observations':real?'FreshRetailNet-50K · observed normalized sales':'Vegetable demonstration · assumed scenarios';
+ $('#sourceCaption').textContent=imported?'Session-only CSV · scenario assumptions apply':real?`Product ${formatId(state.currentRecord.id)} · Store ${state.currentRecord.store} · 90 days · normalized sales`:'Ten named vegetables · editable illustrative inputs · known simulated demand';
  $('#sourceStateDot').className=`source-dot ${real?'real':imported?'imported':'demo'}`;
  $('#metricScope').textContent=real?`Source: real normalized sales / stockouts. Decision outcomes use 10× scaled scenario units, assumed five-day shelf life and illustrative cost parameters. These are not retail financial results.`:
    imported?'Observed CSV is used to calibrate a separate inventory scenario; economic parameters are assumed.':'Scenario quantities, inventory and costs are simulated, not measured retailer observations.';
 }
 function renderObservedHistory(){
  const panel=$('#observedPanel');
- if(!state.currentRows||state.loadedCSV){panel.hidden=true;return;}
+ if(state.mode!=='benchmark'||!state.currentRows||state.loadedCSV){panel.hidden=true;return;}
  panel.hidden=false;
  const rows=state.currentRows, rec=state.currentRecord;
  const max=Math.max(.01,...rows.map(x=>x.normalizedSales));
@@ -176,24 +214,35 @@ function renderCatalog(){
  $('#catalogMore').hidden=state.catalogLimit>=entries.length;
  $$('[data-product-id]').forEach(el=>el.addEventListener('click',()=>selectBenchmarkProduct(Number(el.dataset.productId))));
 }
+const shardRequests=new Map();
 async function selectBenchmarkProduct(id){
  const record=state.catalog?.catalog.find(x=>x.id===id);if(!record)return;
- const seq=++state.loadToken,part=Number(id)%16;
- $('#catalogContext').textContent=`Loading verified history for Product ${formatId(id)}…`;
+ const seq=++state.loadToken,part=id%16;
+ setBusy(true);$('#catalogContext').textContent=`Loading verified Product ${formatId(id)} · Store ${record.store}…`;
  try{
-  if(!benchmarkShards.has(part)){
-   const response=await fetch(`./data/part-${String(part).padStart(2,'0')}.json`);
-   if(!response.ok)throw Error(`Historical shard was not available (HTTP ${response.status}).`);
-   benchmarkShards.set(part,await response.json());
+  let shard=benchmarkShards.get(part);
+  if(!shard){
+   let request=shardRequests.get(part);
+   if(!request){
+    request=fetch(`./data/part-${String(part).padStart(2,'0')}.json`).then(res=>{if(!res.ok)throw Error(`Historical shard unavailable (HTTP ${res.status}).`);return res.json();}).finally(()=>shardRequests.delete(part));
+    shardRequests.set(part,request);
+   }
+   shard=await request;benchmarkShards.set(part,shard);
   }
-  const rows=decodeSeries(benchmarkShards.get(part),record);
-  if(seq!==state.loadToken)return;
-  state.currentRecord=record;state.currentRows=rows;state.benchmarkHistory=toScenarioHistory(rows);state.loadedCSV=null;state.sku=buildScenarioSku(record);state.day=1;
-  $('#skuSelect').value=state.sku.id;
-  $('#importMessage').textContent='';
+  const rows=decodeSeries(shard,record);
+  if(seq!==state.loadToken||state.mode!=='benchmark')return;
+  state.currentRecord=record;state.currentRows=rows;state.benchmarkHistory=toScenarioHistory(rows);
+  state.loadedCSV=null;state.sku=buildScenarioSku(record);state.day=1;
+  $('#skuSelect').value=state.sku.id;$('#importMessage').textContent='';
   refresh();renderCatalog();
-  toast(`Product ${formatId(id)} · Store ${record.store}: 90-day benchmark loaded.`);
- }catch(err){if(seq!==state.loadToken)return;$('#catalogContext').textContent=`Could not load Product ${formatId(id)}: ${err.message}`;toast('Historical data could not be loaded.');}
+  $('#catalogContext').textContent=`Product ${formatId(id)} · Store ${record.store} · 90 verified observed days`;
+  toast(`Product ${formatId(id)} · Store ${record.store}: history loaded.`);
+ }catch(err){
+  if(seq!==state.loadToken||state.mode!=='benchmark')return;
+  $('#catalogContext').textContent=`Could not load Product ${formatId(id)}: ${err.message}`;
+  $('#skuSelect').value=state.sku.id;
+  toast('History load failed. Earlier selection remains unchanged.');
+ }finally{if(seq===state.loadToken)setBusy(false);}
 }
 async function loadBenchmarkCatalog(){
  try{
@@ -202,21 +251,59 @@ async function loadBenchmarkCatalog(){
   state.catalog=parseCatalog(await response.json());
   const groups=[...new Set(state.catalog.catalog.map(r=>r.category[0]))].sort((a,b)=>a-b);
   $('#catalogCategory').innerHTML='<option value="all">All groups</option>'+groups.map(g=>`<option value="${g}">Group ${g}</option>`).join('');
-  $('#skuSelect').innerHTML=state.catalog.catalog.map(r=>`<option value="FRN-${r.id}">Product ${formatId(r.id)} · Store ${r.store}</option>`).join('');
+  if(state.mode==='benchmark')$('#skuSelect').innerHTML=state.catalog.catalog.map(r=>`<option value="FRN-${r.id}">Product ${formatId(r.id)} · Store ${r.store}</option>`).join('');
   renderCatalog();
   const first=[...state.catalog.catalog].sort((a,b)=>b.meanSale-a.meanSale).find(r=>r.stockoutDays>0)||state.catalog.catalog[0];
-  await selectBenchmarkProduct(first.id);
+  if(state.mode==='benchmark')await selectBenchmarkProduct(first.id);else workspace?.render();
  }catch(err){
-  $('#catalogContext').innerHTML=`The historical catalog could not be loaded: ${escapeHTML(err.message)}. The five-product example remains usable, but it does not represent benchmark observations.`;
-  $('#sourceState').textContent='Example mode · historical dataset unavailable';
-  $('#sourceCaption').textContent='See dataset information in Methodology';
+  $('#catalogContext').textContent=`Benchmark catalog unavailable: ${err.message}. The named vegetable simulation remains functional.`;
+  $('#sourceState').textContent=state.mode==='vegetable'?'Vegetable demonstration · illustrative':'Benchmark unavailable';
+  $('#sourceCaption').textContent='The real benchmark needs its attributed data assets. See Methodology.';
   $('#catalogMore').hidden=true;
   $('#catalogTotal').textContent='0';
-  toast('Historical dataset unavailable. Showing example mode.');
+  toast('Real benchmark unavailable; vegetable simulation remains usable.');
  }
 }
+function selectVegetable(id){
+ const original=VEGETABLES.find(v=>v.id===id);if(!original)return;
+ state.loadToken++;setBusy(false);state.mode='vegetable';
+ state.sku=state.vegOverrides[id]||original;state.currentRecord=null;state.currentRows=null;state.benchmarkHistory=null;state.loadedCSV=null;state.day=1;
+ $('#leadRange').value=state.sku.leadTime??1;settingsFromControls();
+ $('#skuSelect').innerHTML=VEGETABLES.map(v=>`<option value="${v.id}">${escapeHTML(v.name)} · ${v.id}</option>`).join('');
+ $('#skuSelect').value=id;$('#importMessage').textContent='';
+ refresh();toast(`${state.sku.name} · illustrative vegetable scenario selected.`);
+}
+function setMode(mode,id){
+ if(mode==='benchmark'){
+   if(!state.catalog){toast('The benchmark catalog is still loading; please try again shortly.');return;}
+   state.mode='benchmark';state.loadedCSV=null;
+   $('#skuSelect').innerHTML=state.catalog.catalog.map(r=>`<option value="FRN-${r.id}">Product ${formatId(r.id)} · Store ${r.store}</option>`).join('');
+   const first=state.catalog.catalog.find(r=>r.id===id)||state.currentRecord||state.catalog.catalog[0];
+   workspace?.render();selectBenchmarkProduct(first.id);return;
+ }
+ selectVegetable(VEGETABLES.find(v=>v.id===id)?.id||VEGETABLES[0].id);
+}
+function updateVegetable(key,value){
+ if(state.mode!=='vegetable')return;
+ const next=validateVegetable({...state.sku,[key]:value});
+ state.vegOverrides[state.sku.id]=next;state.sku=next;
+ if(key==='leadTime')$('#leadRange').value=next.leadTime;
+ settingsFromControls();state.day=1;refresh();
+}
+function resetVegetable(){
+ if(state.mode!=='vegetable')return;
+ delete state.vegOverrides[state.sku.id];selectVegetable(state.sku.id);toast('Vegetable assumptions restored to illustrated defaults.');
+}
+function resetScenario(){
+ state.seed=42;$('#seedInput').value=42;
+ $('#demandRange').value=100;$('#leadRange').value=state.sku.leadTime??1;$('#shelfRange').value=0;$('#shortageRange').value=10;$('#trialRange').value=24;
+ state.day=1;settingsFromControls();refresh();toast('Seed and scenario controls reset to the default baseline.');
+}
+function markDirty(){state.dirty=true;$('#exportBtn').disabled=true;$('#ledgerExportBtn').disabled=true;const d=$('#dirtyResults');if(d){d.hidden=false;d.textContent='Parameters changed · click Evaluate all policies to update the results.';}}
+function setBusy(busy){state.loading=busy;$('#runBtn').disabled=busy;$('#experimentBtn').disabled=busy;$('#replayBtn').disabled=busy;$('#exportBtn').disabled=busy||state.dirty;$('#ledgerExportBtn').disabled=busy||state.dirty;$('#catalogContext').setAttribute('aria-busy',String(busy));}
 function bind(){
- $('#skuSelect').innerHTML=SKUS.map(s=>`<option value="${s.id}">${escapeHTML(s.name)} · ${s.id}</option>`).join('');
+ $('#skuSelect').innerHTML=VEGETABLES.map(s=>`<option value="${s.id}">${escapeHTML(s.name)} · ${s.id}</option>`).join('');
+ workspace=createWorkspace({state,onMode:setMode,onSelect:selectVegetable,onUpdate:updateVegetable,onReset:resetVegetable});workspace.bind();
  $$('[data-nav]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();navigate(el.dataset.nav)}));
  $('#openLab').addEventListener('click',()=>navigate('experiments'));
  $('#storeToReplay').addEventListener('click',()=>navigate('inventory'));
@@ -225,18 +312,19 @@ function bind(){
  $('#catalogCategory').addEventListener('change',e=>{state.catalogFilter.group=e.target.value;state.catalogLimit=12;renderCatalog();});
  $('#catalogSort').addEventListener('change',e=>{state.catalogFilter.sort=e.target.value;state.catalogLimit=12;renderCatalog();});
  $('#catalogMore').addEventListener('click',()=>{state.catalogLimit+=12;renderCatalog();});
- $('#skuSelect').addEventListener('change',e=>{if(e.target.value.startsWith('FRN-')){selectBenchmarkProduct(Number(e.target.value.slice(4)));return;}state.sku=SKUS.find(s=>s.id===e.target.value)||SKUS[0];state.loadedCSV=null;state.day=1;refresh();toast('Selected SKU loaded.');});
+ $('#skuSelect').addEventListener('change',e=>{if(e.target.value.startsWith('FRN-')){setMode('benchmark',Number(e.target.value.slice(4)));return;}selectVegetable(e.target.value);});
  $('#seedInput').addEventListener('change',e=>{state.seed=Math.max(1,Math.min(999999,Math.floor(Number(e.target.value)||42)));e.target.value=state.seed;state.day=1;refresh();});
  $('#replayBtn').addEventListener('click',()=>{state.seed=state.seed+1;$('#seedInput').value=state.seed;state.day=1;refresh();toast('New reproducible scenario generated.');});
  $('#runBtn').addEventListener('click',()=>{refresh();toast('Three replenishment policies evaluated.');});
  $('#prevDay').addEventListener('click',()=>{state.day=Math.max(1,state.day-1);renderInventory();});
  $('#nextDay').addEventListener('click',()=>{state.day=Math.min(state.settings.days,state.day+1);renderInventory();});
  $('#daySlider').addEventListener('input',e=>{state.day=Number(e.target.value);renderInventory();});
- for(const id of ['demandRange','leadRange','shelfRange','shortageRange','trialRange'])$('#'+id).addEventListener('input',settingsFromControls);
+ for(const id of ['demandRange','leadRange','shelfRange','shortageRange','trialRange'])$('#'+id).addEventListener('input',()=>{settingsFromControls();markDirty();});
+ $('#resetBtn').addEventListener('click',resetScenario);
  $('#experimentBtn').addEventListener('click',()=>{settingsFromControls();refresh();toast(`Experiment complete: ${state.trials} paired simulation trials.`);});
  $('#exportBtn').addEventListener('click',exportResults);$('#ledgerExportBtn').addEventListener('click',exportLedger);
  $('#csvFile').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>2_000_000)throw Error('CSV is too large (2 MB maximum).');state.loadedCSV=parseUserCSV(await f.text(),state.sku.id);state.day=1;$('#importMessage').className='import-message';$('#importMessage').textContent=`Imported ${state.loadedCSV.length} records for ${state.sku.id}. Data remains in this browser session.`;refresh();toast('User CSV imported for this SKU.');}catch(err){$('#importMessage').className='import-message error';$('#importMessage').textContent=err.message;toast('CSV import failed. Check the expected columns.');}finally{e.target.value='';}});
- $('#clearFile').addEventListener('click',()=>{state.loadedCSV=null;$('#importMessage').textContent=state.currentRecord?'Restored public benchmark observations.':'Restored sample observations.';$('#importMessage').className='import-message';refresh();toast('Synthetic data restored.');});
+ $('#clearFile').addEventListener('click',()=>{state.loadedCSV=null;$('#importMessage').textContent=state.mode==='benchmark'?'Restored attributed benchmark observations.':'Restored illustrative vegetable observations.';$('#importMessage').className='import-message';refresh();toast('Source observations restored.');});
  $('#downloadSample').addEventListener('click',()=>{const hist=generateHistory(state.sku,42).slice(0,15),rows=['date,sales,stockout_hours,sku',...hist.map(x=>[x.date,x.sales,x.unavailableHours,state.sku.id].join(','))];downloadText(`example-${state.sku.id}.csv`,rows.join('\n'),'text/csv');});
  window.addEventListener('hashchange',()=>navigate((location.hash||'#overview').slice(1)));
  settingsFromControls();refresh();navigate((location.hash||'#overview').slice(1));

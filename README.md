@@ -1,5 +1,15 @@
 # FreshTwin
 
+## FreshTwin v0.4 — Phases 1–3: safer decisions and two operating modes
+
+**Two distinct workspaces:** **Vegetable Demonstration** offers ten named products with editable demand, costs, shelf lives, lead time, opening stock and age mix. **Research Benchmark** retains 865 actual anonymized product IDs and their real normalized histories. No anonymized ID is assigned a vegetable name. Switching modes never rewrites benchmark observations.
+
+**Scientific core:** daily FEFO balances, lead-time aware outstanding orders, cost-basis opening inventory and terminal credits for usable stock and committed pipeline, seeded paired Monte Carlo, small-instance candidate-search verification, and controlled synthetic known-demand diagnostics. The freshness-aware policy is a bounded sampled heuristic, **not a globally optimal multi-period solver**; genuine lost sales remain unobserved. See [v0.4 methodology](docs/METHODOLOGY.md) and [Phases 1–3 engineering validation](docs/PHASES_1_3_VALIDATION.md).
+
+**New controls:** editable per-vegetable inputs, reset to baseline, explicit stale-result notice, compact provenance, exportable opening/closing inventory ledger and reproducible research JSON, and responsive decision-lab layout. `npm run check` runs model/data regressions; a separate Chromium acceptance workflow checks rapid product selection, exports and 390/768/1512px responsiveness. The page is static and needs no paid AI key.
+
+**Verified pre-merge acceptance:** the branch passed **28/28 Node-based tests and a production build** in GitHub Actions and **24/24 actual Chromium interactive checks** including real benchmark assets, 128-trial Monte Carlo, mode switching, exports, seed reproducibility, and 390/768/1512px layouts. The Cloudflare-deployed site still requires post-merge acceptance. Phase 4 joint-capacity/joint-budget optimization has **not** been implemented.
+
 **Stockout-aware demand intelligence and perishable-inventory decision support**
 
 [![FreshTwin CI](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/workflows/ci.yml/badge.svg)](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/workflows/ci.yml)
@@ -9,6 +19,9 @@
 FreshTwin is an interactive inventory-research application developed for **INEN-5350 Production & Inventory Control**. It illustrates how stockout-censored sales affect replenishment planning for perishable goods. Its user experience puts the product data first, followed by model selection, transparent simulation, inventory aging and risk-aware comparison.
 
 ## Product capabilities
+
+- Choose **Vegetable Demonstration** to model ten named produce products with editable cost, demand, supplier, shelf life and opening inventory assumptions, or **Research Benchmark** to analyze 865 real anonymized product IDs without inventing their names.
+- Audit the explicit stock-flow and net scenario-cost objective directly on the Methodology page, with cost breakdowns and Monte Carlo convergence diagnostics.
 
 - Search, category-filter and sort a catalog of **865 anonymized product IDs** from Dingdong's FreshRetailNet-50K source, once the verified data import succeeds.
 - Inspect one representative **actual 90-day store history per product** including normalized daily/hourly sales, stockout exposure, promotions and discount context.
@@ -40,7 +53,7 @@ python scripts/import_freshretail.py
 npm run build
 ```
 
-For the first public release, run the GitHub ingestion workflow on the feature branch and verify that the generated data shards are present. A missing catalog triggers an explicit, labeled example-mode fallback, **not a fabricated catalog**.
+The publisher-derived catalog and 16 attributed history shards are already committed and independently audited; re-running the importer is optional for reproducibility. A missing catalog triggers an explicit, labeled example-mode fallback, **not a fabricated catalog**.
 
 ## Model diagram
 

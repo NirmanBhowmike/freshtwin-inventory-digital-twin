@@ -1,0 +1,41 @@
+name: Browser acceptance - FreshTwin
+on:
+  pull_request:
+    paths:
+      - 'public/**'
+      - 'src/**'
+      - 'scripts/**'
+      - '.github/workflows/browser-acceptance.yml'
+  workflow_dispatch:
+concurrency:
+  group: browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  browser-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated headless Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start web server and run browser acceptance
+        run: |
+          npm run dev > /tmp/freshtwin-local.log 2>&1 &
+          S_PID=$!
+          trap 'kill "$S_PID" || true' EXIT
+          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:4173/ > /dev/null; then break; fi; sleep 1; done
+          node scripts/browser_acceptance.mjs
+      - name: Upload acceptance report and desktop/mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freshtwin-browser-acceptance
+          path: .browser-artifacts/
+          if-no-files-found: ignore
