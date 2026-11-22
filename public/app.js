@@ -1,11 +1,14 @@
-import {SKUS, generateHistory,comparePolicies,monteCarlo,parseUserCSV} from './engine.js';
+import {SKUS,MODEL_VERSION,generateHistory,comparePolicies,monteCarlo,parseUserCSV,syntheticDemandValidation} from './engine.js';
+import {VEGETABLES,validateVegetable} from './vegetables.js';
+import {createWorkspace} from './workspace.js';
 import {parseCatalog,decodeSeries,buildScenarioSku,toScenarioHistory,pseudoStockoutBacktest,categoryLabel,filterCatalog,formatId,BENCHMARK_URL,MODEL_INDEX_MULTIPLIER} from './empirical.js';
 const $=(selector)=>document.querySelector(selector);
 const $$=(selector)=>Array.from(document.querySelectorAll(selector));
 const fmt=(n,d=0)=>Number.isFinite(n)?n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
 const money=n=>'$'+fmt(n,0), pct=n=>(n*100).toFixed(1)+'%';
 const escapeHTML=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state={sku:SKUS[0],seed:42,settings:{leadTime:1,shelfLifeOffset:0,demandMultiplier:1,shortageWeight:1,days:28},history:null,comparison:null,experiment:null,trials:24,day:1,loadedCSV:null,catalog:null,benchmarkHistory:null,currentRecord:null,currentRows:null,loadToken:0,catalogLimit:12,catalogFilter:{search:"",group:"all",sort:"id"}};
+const state={mode:'vegetable',vegOverrides:{},sku:VEGETABLES[0],seed:42,settings:{leadTime:VEGETABLES[0].leadTime,shelfLifeOffset:0,demandMultiplier:1,shortageWeight:1,days:28},history:null,comparison:null,experiment:null,trials:24,day:1,dirty:false,loading:false,loadedCSV:null,catalog:null,benchmarkHistory:null,currentRecord:null,currentRows:null,loadToken:0,catalogLimit:12,catalogFilter:{search:"",group:"all",sort:"id"}};
+let workspace=null;
 const names={baseline:'Observed-sales baseline',corrected:'Stockout-aware reorder point',adaptive:'Freshness-aware optimizer'};
 const tones={baseline:'#a1b5ad',corrected:'#72c8b2',adaptive:'#159f80'};
 let toastHandle=null;
@@ -22,20 +25,32 @@ function svgLineChart(series,width=700,height=236){
  return html+'</svg>';
 }
 function refresh(){
- state.history=state.loadedCSV||state.benchmarkHistory||generateHistory(state.sku,state.seed);
+ state.history=state.loadedCSV||(state.mode==='benchmark'?state.benchmarkHistory:null)||generateHistory(state.sku,state.seed);
  state.comparison=comparePolicies(state.sku,state.settings,state.seed,state.history);
  state.experiment=monteCarlo(state.sku,state.settings,state.seed,state.trials,state.history);
- $('#sideDataMode').textContent=state.loadedCSV?'Imported CSV':state.currentRecord?'FreshRetailNet':'Demo scenario';
- $('#dataBadge').textContent=state.loadedCSV?'IMPORTED CSV':state.currentRecord?'FRESHRETAILNET-50K':'DEMO SCENARIO';
+ state.dirty=false;const dirty=$('#dirtyResults');if(dirty)dirty.hidden=true;
+ $('#sideDataMode').textContent=state.loadedCSV?'Imported CSV':state.mode==='benchmark'?'FreshRetailNet':'Vegetable demo';
+ $('#dataBadge').textContent=state.loadedCSV?'IMPORTED CSV':state.mode==='benchmark'?'FRESHRETAILNET-50K':'VEGETABLE DEMONSTRATION';
+ workspace?.render();
  updateSourceStatus();renderObservedHistory();
  renderOverview();renderInventory();renderExperiment();
 }
 function selectStoreSku(id){
- if(id.startsWith('FRN-')){selectBenchmarkProduct(Number(id.slice(4)));return;}
+ if(id.startsWith('FRN-')){setMode('benchmark',Number(id.slice(4)));return;}
+ if(state.mode==='vegetable'){selectVegetable(id);return;}
  const found=SKUS.find(x=>x.id===id);if(!found)return;
- state.sku=found;state.loadedCSV=null;state.day=1;$('#skuSelect').value=id;$('#importMessage').textContent='';refresh();toast(`${found.name} inventory model selected.`);
+ state.sku=found;state.loadedCSV=null;state.day=1;$('#skuSelect').value=id;$('#importMessage').textContent='';refresh();
 }
 function renderStoreGrid(){
+ if(state.mode==='vegetable'){
+   $('#storeCountBadge').textContent='10 NAMED VEGETABLES · ILLUSTRATIVE';
+   $('#storeGrid').innerHTML=VEGETABLES.map(v=>{
+     const sk=state.vegOverrides[v.id]||v,active=sk.id===state.sku.id;
+     return `<button type="button" class="store-card ${active?'selected':''}" data-store-sku="${sk.id}" aria-pressed="${active}"><span class="store-card-top"><span class="store-product-icon" style="--product-color:${sk.hue}">${sk.icon}</span><span class="store-signal good"><i></i> SIMULATED</span></span><span class="store-product-name">${escapeHTML(sk.name)}</span><span class="store-product-category">${escapeHTML(sk.category)} · ${sk.shelfLife}-day shelf life</span><span class="store-capacity"><span style="width:${Math.min(100,sk.initialInventory/Math.max(1,sk.demand*3)*100)}%"></span></span><span class="store-product-foot"><span><strong>${fmt(sk.initialInventory)}</strong> opening units</span><strong>${fmt(sk.demand)}/day assumption</strong></span></button>`;
+   }).join('');
+   $('[data-store-sku]').forEach(btn=>btn.addEventListener('click',()=>selectVegetable(btn.dataset.storeSku)));
+   return;
+ }
  if(state.catalog?.catalog?.length){
   const cat=state.catalog.catalog, selected=state.currentRecord;
   const related=selected?[selected,...cat.filter(x=>x.category[0]===selected.category[0]&&x.id!==selected.id).slice(0,7)]:cat.slice(0,8);
@@ -101,11 +116,11 @@ function renderOverview(){
  const best=[...c.policies].sort((a,b)=>a.metrics.cost-b.metrics.cost)[0];
  $('#recommendationText').textContent=`The bounded freshness-aware policy orders ${fmt(m.orders)} units across 28 simulated days. Lowest realized cost in this scenario: ${names[best.policy]}.`;
  $('#policyList').innerHTML=c.policies.map(p=>`<div class="policy-row"><div><div class="policy-name">${names[p.policy]}</div><div class="policy-sub">28-day simulation result</div></div><div class="policy-result">${money(p.metrics.cost)}<small>${pct(p.metrics.fillRate)} fill rate</small></div></div>`).join('');
- const indexFactor=state.currentRecord&&!state.loadedCSV?MODEL_INDEX_MULTIPLIER:1;
+ const indexFactor=state.mode==='benchmark'&&state.currentRecord&&!state.loadedCSV?MODEL_INDEX_MULTIPLIER:1;
  const max=Math.max(e.naive,e.corrected,1)*1.2;
  $('#demandBars').innerHTML=`<div class="demand-bars"><div class="demand-row"><div class="demand-head"><strong>Recorded sales rate</strong><span>${fmt(e.naive/indexFactor,2)} ${indexFactor>1?'normalized/day':'units/day'}</span></div><div class="demand-track"><span style="width:${100*e.naive/max}%"></span></div></div><div class="demand-row"><div class="demand-head"><strong>Stockout-adjusted estimate</strong><span>${fmt(e.corrected/indexFactor,2)} ${indexFactor>1?'normalized/day':'units/day'}</span></div><div class="demand-track corrected"><span style="width:${100*e.corrected/max}%"></span></div></div><p class="demand-comment">${e.censoredDays} of the last ${Math.min(35,state.history.length)} historical days had unavailable hours. The adjustment estimates unseen demand; actual lost sales remain unknown. Benchmark sales are normalized.</p></div>`;
  const sk=state.sku;
- const shelfSKUS=state.currentRecord?[state.sku]:SKUS;
+ const shelfSKUS=state.mode==='vegetable'?VEGETABLES:(state.currentRecord?[state.sku]:SKUS);
  $('#shelfVisual').innerHTML=`<div class="shelf-illustration"><div class="shelf-items">${shelfSKUS.map(s=>`<div class="shelf-item" title="${escapeHTML(s.name)}">${s.icon}</div>`).join('')}</div><div class="shelf-bar"></div><div class="shelf-caption"><span>First-expiring-first-out rotation</span><span>1 selected SKU model</span></div></div><div class="shelf-foot">◷ <span><strong>${escapeHTML(sk.name)}</strong> · assumed shelf life ${Math.max(1,sk.shelfLife+state.settings.shelfLifeOffset)} days</span></div>`;
 }
 function renderInventory(){
