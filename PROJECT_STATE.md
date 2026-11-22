@@ -55,3 +55,12 @@ Synthetic data, cost, initial inventory and product life are assumptions. No val
 
 ## New chat instructions
 Read this file first. Check GitHub latest branch/PR/CI status and public Cloudflare URL before modifying source. Preserve approved requirements; report what is verified vs pending. Work on a feature branch; do not overwrite `main` or remove repository protections. Continue technical implementation without re-asking already answered choices.
+
+## v0.3 real-dataset implementation (2026-11-22)
+- User confirmed the **FreshTwin** name. User requested a professional, self-explanatory product, removal of the full-width synthetic demonstration banner, real FreshRetailNet-50K integration, and a much larger product catalog.
+- Proposed branch: `feat/freshtwin-real-data-catalog`. New `src/empirical.js` uses real normalized observation histories and explicitly distinct modeled inventory scenario units. The catalog will expose **865 anonymized product IDs**, not fake fruit or vegetable names. Source is Dingdong-Inc, CC BY 4.0.
+- Reproducible importer `scripts/import_freshretail.py` reads the 4.5M-row benchmark training split, selects a representative 90-day store series for each product, emits 16 static JSON shards and a manifest with hash/license. GitHub workflow `.github/workflows/import-freshretail.yml` is designed to generate and commit the actual assets on the development branch. Source rows must be validated before merge.
+- New UI searches, filters and sorts products, displays observed normalized daily sales with stockout indications, and shows a pseudo-stockout backtest on artificially withheld late-day observations. Full-width demo disclaimer replaced by a compact collapsible explanation. Simulation costs and shelf lives remain assumed.
+- Local tests at the time of implementation: 16/16 pass; `npm run build` passes. **Data ingestion and public Cloudflare browser verification remain PENDING until explicitly verified.** Do not assert real source records are deployed before the workflow succeeds and the resulting catalog is inspected.
+- Live URL supplied by user: https://freshtwin-inventory-digital-twin.nirman-bhowmike.workers.dev/ . This link has not been verified with a live browser in the current tool environment.
+- Next: run dataset import workflow on the feature branch; verify 865 products and 16 shards, inspect correctness/size; run GitHub CI; merge reviewed PR; confirm Workers deployment and browser. Then calibrate model and develop stronger empirical experiments.

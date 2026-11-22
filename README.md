@@ -1,83 +1,86 @@
 # FreshTwin
 
-**Stockout-aware demand estimation and stochastic replenishment optimization for perishable retail systems**
+**Stockout-aware demand intelligence and perishable-inventory decision support**
 
-FreshTwin is an interactive, browser-based *digital-twin research prototype* developed for **INEN-5350 Production & Inventory Control**. It models a small fresh-food operation, compares three replenishment policies, and makes its calculations and assumptions visible.
+[![FreshTwin CI](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/workflows/ci.yml/badge.svg)](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/workflows/ci.yml)
 
-> **Scientific scope.** The starter scenario uses **synthetic historical observations, inventory state, SKU prices, product shelf lives and costs**. It is not a live-connected retail system. Simulated policy results must not be represented as verified field savings. A real-world digital twin would require a continuously synchronized physical data source.
+[**Open the public application**](https://freshtwin-inventory-digital-twin.nirman-bhowmike.workers.dev/) · [Read methodology](docs/METHODOLOGY.md) · [Dataset and attribution](docs/DATA_SOURCE.md)
 
-## v0.2 interface and evidence improvements
+FreshTwin is an interactive inventory-research application developed for **INEN-5350 Production & Inventory Control**. It illustrates how stockout-censored sales affect replenishment planning for perishable goods. Its user experience puts the product data first, followed by model selection, transparent simulation, inventory aging and risk-aware comparison.
 
-- Interactive visual store board: click one of five modeled SKUs to change the audited simulation.
-- Day-by-day material-flow dashboard and actual age-cohort inventory display reconciled to the mathematical ledger.
-- Service-versus-waste decision plot and paired approximate 95% confidence intervals for differences in simulation cost.
-- No fictitious shelf-capacity constraints or statistically identified demand claims are introduced by these visual changes.
+## Product capabilities
 
-## What works
+- Search, category-filter and sort a catalog of **865 anonymized product IDs** from Dingdong's FreshRetailNet-50K source, once the verified data import succeeds.
+- Inspect one representative **actual 90-day store history per product** including normalized daily/hourly sales, stockout exposure, promotions and discount context.
+- See real observed data in its original normalized scale; separately explore scenario inventory constructed from that index.
+- Compare observed-sales, stockout-adjusted, and freshness-aware replenishment policies.
+- Inspect a day-by-day FEFO (first-expiring-first-out) inventory ledger, modeled batch aging and future purchase orders.
+- Run paired, seeded Monte Carlo experiments, visualize service-versus-waste trade-offs and export the model's results.
+- Run a pseudo-stockout backtest that masks late-day sales of fully observed days and measures partial-day recovery error.
+- Import a simple physical-unit CSV privately in the browser as an alternate source for a selected scenario.
 
-- Deterministic 90-day simulated demand/sales/stockout history for five illustrative SKUs
-- Explicit **recorded sales vs. stockout-adjusted demand** estimator; the adjustment is a bounded heuristic, **not a validated statistical recovery model**
-- 28-day, FEFO (first-expiring-first-out) age-structured inventory simulation with arrivals, orders, lost sales and spoilage
-- Three policy benchmarks: observed-sales reorder point, stockout-corrected reorder point, bounded scenario-based freshness-aware order search
-- Paired seeded Monte Carlo policy comparison with mean simulated cost, fill rate, expired inventory and estimated cost CVaR (90%)
-- Interactive daily inventory ledger, scenario controls and exportable research results
-- Browser-local CSV import to replace generated historical sales observations for a selected SKU
+> **Source separation:** Historical benchmark sales and stockouts are real anonymized data. Product names, physical stock-on-hand, costs, shelf lives, true lost demand and actual waste are *not* supplied. Forward replenishment/waste/cost outcomes remain **simulations using declared assumptions**, not verified business savings. Source [details](docs/DATA_SOURCE.md).
 
 ## Quick start
 
-Requires Node.js 20+. **No npm install is required.**
+Node.js 20 or higher. No runtime npm dependencies required.
 
 ```bash
 npm run dev
+# Open http://localhost:4173
+npm run check  # engine, provenance and empirical tests
+npm run build  # deployable output in dist/
 ```
 
-Open <http://localhost:4173>.
+To generate the actual publisher-derived catalog locally:
 
 ```bash
-npm run check  # syntax and scientific invariants/tests
-npm run build  # creates deployable static assets in dist/
+python -m pip install pandas pyarrow
+python scripts/import_freshretail.py
+npm run build
 ```
 
-## Cloudflare deployment
+For the first public release, run the GitHub ingestion workflow on the feature branch and verify that the generated data shards are present. A missing catalog triggers an explicit, labeled example-mode fallback, **not a fabricated catalog**.
 
-Deploy as **Cloudflare Pages** using Git integration:
+## Model diagram
 
-| Setting | Value |
-|---|---|
-| Production branch | `main` |
-| Framework preset | `None` |
-| Build command | `npm run build` |
-| Build output directory | `dist` |
-| Root directory | `/` |
-
-This prototype is fully static, does not request a Cloudflare API key, does not require backend infrastructure, and can be published on a `*.pages.dev` address. The `feat/freshtwin-functional-prototype` branch is intended for review prior to merging to `main`. Cloudflare deployment still requires repository authorization in the Cloudflare account.
-
-## CSV schema
-
-```csv
-date,sales,stockout_hours,sku
-2026-08-01,28,0,SPN-014
-2026-08-02,19,4,SPN-014
+```mermaid
+flowchart LR
+  A[FreshRetailNet benchmark] --> B[Verified deterministic importer]
+  B --> C[Catalog and 16 public data shards]
+  C --> D[Observed sales and stockout explorer]
+  C --> E[Normalized-index conversion]
+  E --> F[Demand correction scenarios]
+  F --> G[FEFO inventory simulation]
+  G --> H[Baseline versus optimized policies]
+  H --> I[Paired Monte Carlo and uncertainty]
+  I --> J[Auditable results and exports]
 ```
 
-Provide at least eight daily records with **physical-unit (non-normalized) sales**, `stockout_hours` in `[0,16]`, and optional `sku`. The data is processed locally in the browser and is not uploaded or persisted. CSV parsing is deliberately small and does not support embedded quoted commas. The import is for *observations only*: inventory, costs, and product life are still modeled assumptions. **Do not input normalized FreshRetailNet-50K values as physical unit quantities.**
+The importer chooses **one store-product series for each anonymized product**; it does not claim the catalog's 865 items were stocked together at a single store.
 
-## Model specification
+## Source dataset and attribution
 
-See [docs/METHODOLOGY.md](docs/METHODOLOGY.md) and [docs/VALIDATION.md](docs/VALIDATION.md). Source is under `src/engine.js` (deterministic core), `public/app.js` (views) and `public/styles.css` (responsive UI).
+**FreshRetailNet-50K** © Dingdong-Inc, licensed **CC BY 4.0**. Data developer: Dingdong-Inc. Dataset paper: Wang, Y., Gu, J., Long, L., Li, X., Shen, L., Fu, Z., Zhou, X., and Jiang, X. (2025). *FreshRetailNet-50K: A Stockout-Annotated Censored Demand Dataset for Latent Demand Recovery and Forecasting in Fresh Retail.* [arXiv:2505.16319](https://arxiv.org/abs/2505.16319). [Original dataset and license](https://huggingface.co/datasets/Dingdong-Inc/FreshRetailNet-50K).
 
-## Research reproducibility
+The extracted benchmark JSON files in `public/data/` preserve CC BY 4.0 attribution; the original datasets are not relicensed by this repository. The original data's anonymized identifiers are presented faithfully. See [DATA_SOURCE.md](docs/DATA_SOURCE.md) for schema, selection algorithm, source hash, preparation script, assumptions and license details.
 
-All built-in stochastic scenarios use a user-visible seed. Policy comparisons share the same demand path in each trial; no policy is hardcoded to outperform another. The selected replenishment strategy can incur higher costs, and the interpretation should acknowledge this. `npm run check` verifies model invariants and key comparison properties.
+## Methodology, risks and verification
 
-## Provenance and credits
+The model's stockout-aware adjustment is an availability-based **heuristic**. The pseudo-stockout backtest measures reconstruction of *artificially hidden observed sales*, not unidentified latent demand on genuine stockout days. The scenario optimizer performs a bounded Monte Carlo/grid-search approximation; no claim of global optimality is made. Revenue/cost numbers arise from illustrative unit economics.
 
-FreshTwin is an original educational prototype built with zero third-party runtime dependencies. Retail demand reconstruction and perishable inventory decision-making are established research areas; this prototype **does not claim original empirical discovery**. The [FreshRetailNet-50K project](https://huggingface.co/datasets/Dingdong-Inc/FreshRetailNet-50K) is a possible future historical data source after reviewing the terms of access, scale, and data dictionary. It is **not bundled** and **not used** in the default synthetic demonstration. All figures are generated from modeled outputs; graphical styling uses native SVG/CSS and standard emoji. Google Fonts may be requested by the browser and gracefully fall back to local fonts.
+- Mathematical model: [docs/METHODOLOGY.md](docs/METHODOLOGY.md)
+- Dataset provenance: [docs/DATA_SOURCE.md](docs/DATA_SOURCE.md)
+- Validation and test limitations: [docs/VALIDATION.md](docs/VALIDATION.md)
+- Product requirements: [docs/PRODUCT_REQUIREMENTS.md](docs/PRODUCT_REQUIREMENTS.md) and [docs/PRODUCT_REQUIREMENTS_V03.md](docs/PRODUCT_REQUIREMENTS_V03.md)
+- Project continuity and latest verified state: [PROJECT_STATE.md](PROJECT_STATE.md)
 
-## Research and deployment status
+Run `npm run check` before merging; confirm the Cloudflare `workers.dev` site and interaction behavior separately. Build and unit tests do not substitute for a live-browser acceptance test.
 
-See [PROJECT_STATE.md](PROJECT_STATE.md) for confirmed build state, checkpoints, next tasks, and cross-chat continuity. Treat the file as authoritative rather than relying on older conversations.
+## Cloudflare Workers deployment
 
-## License
+`wrangler.jsonc` configures Cloudflare Workers **Static Assets** from `dist/`. Git-connected build command: `npm run build`; deployment command: `npx wrangler deploy`; production branch: `main`; root `/`. No LLM API key or database is required for the static benchmark explorer. Cloudflare should auto-deploy the protected `main` branch after a verified PR is merged.
 
-**No open-source license is granted.** The public repository may be viewed subject to GitHub's terms; the author's original code is otherwise reserved. This does not change the licenses applicable to any third-party assets or libraries used separately.
+## Usage restrictions and source license
+
+**No open-source license is granted for the author's original application source code.** Public viewing and GitHub's standard functionality are subject to GitHub terms. The separate Dingdong-Inc dataset remains covered by its own **CC BY 4.0 license** and attribution obligations, even when included in public deployment assets. Do not publish third-party private data or deployment secrets.
