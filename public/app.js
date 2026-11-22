@@ -1,10 +1,11 @@
 import {SKUS, generateHistory,comparePolicies,monteCarlo,parseUserCSV} from './engine.js';
+import {parseCatalog,decodeSeries,buildScenarioSku,toScenarioHistory,pseudoStockoutBacktest,categoryLabel,filterCatalog,formatId,BENCHMARK_URL,MODEL_INDEX_MULTIPLIER} from './empirical.js';
 const $=(selector)=>document.querySelector(selector);
 const $$=(selector)=>Array.from(document.querySelectorAll(selector));
 const fmt=(n,d=0)=>Number.isFinite(n)?n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
 const money=n=>'$'+fmt(n,0), pct=n=>(n*100).toFixed(1)+'%';
 const escapeHTML=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state={sku:SKUS[0],seed:42,settings:{leadTime:1,shelfLifeOffset:0,demandMultiplier:1,shortageWeight:1,days:28},history:null,comparison:null,experiment:null,trials:24,day:1,loadedCSV:null};
+const state={sku:SKUS[0],seed:42,settings:{leadTime:1,shelfLifeOffset:0,demandMultiplier:1,shortageWeight:1,days:28},history:null,comparison:null,experiment:null,trials:24,day:1,loadedCSV:null,catalog:null,benchmarkHistory:null,currentRecord:null,currentRows:null,loadToken:0,catalogLimit:12,catalogFilter:{search:"",group:"all",sort:"id"}};
 const names={baseline:'Observed-sales baseline',corrected:'Stockout-aware reorder point',adaptive:'Freshness-aware optimizer'};
 const tones={baseline:'#a1b5ad',corrected:'#72c8b2',adaptive:'#159f80'};
 let toastHandle=null;
@@ -21,18 +22,29 @@ function svgLineChart(series,width=700,height=236){
  return html+'</svg>';
 }
 function refresh(){
- state.history=state.loadedCSV||generateHistory(state.sku,state.seed);
- state.comparison=comparePolicies(state.sku,state.settings,state.seed,state.loadedCSV);
- state.experiment=monteCarlo(state.sku,state.settings,state.seed,state.trials,state.loadedCSV);
- $('#sideDataMode').textContent=state.loadedCSV?'Imported CSV':'Synthetic';
- $('#dataBadge').textContent=state.loadedCSV?'USER-IMPORTED CSV':'SYNTHETIC MODE';
+ state.history=state.loadedCSV||state.benchmarkHistory||generateHistory(state.sku,state.seed);
+ state.comparison=comparePolicies(state.sku,state.settings,state.seed,state.history);
+ state.experiment=monteCarlo(state.sku,state.settings,state.seed,state.trials,state.history);
+ $('#sideDataMode').textContent=state.loadedCSV?'Imported CSV':state.currentRecord?'FreshRetailNet':'Demo scenario';
+ $('#dataBadge').textContent=state.loadedCSV?'IMPORTED CSV':state.currentRecord?'FRESHRETAILNET-50K':'DEMO SCENARIO';
+ updateSourceStatus();renderObservedHistory();
  renderOverview();renderInventory();renderExperiment();
 }
 function selectStoreSku(id){
+ if(id.startsWith('FRN-')){selectBenchmarkProduct(Number(id.slice(4)));return;}
  const found=SKUS.find(x=>x.id===id);if(!found)return;
  state.sku=found;state.loadedCSV=null;state.day=1;$('#skuSelect').value=id;$('#importMessage').textContent='';refresh();toast(`${found.name} inventory model selected.`);
 }
 function renderStoreGrid(){
+ if(state.catalog?.catalog?.length){
+  const cat=state.catalog.catalog, selected=state.currentRecord;
+  const related=selected?[selected,...cat.filter(x=>x.category[0]===selected.category[0]&&x.id!==selected.id).slice(0,7)]:cat.slice(0,8);
+  $('#storeCountBadge').textContent=`${cat.length} REAL PRODUCT IDS`;
+  $('#storeGrid').innerHTML=related.map(r=>`<button type="button" class="store-card ${r.id===selected?.id?'selected':''}" data-benchmark-product="${r.id}" aria-pressed="${r.id===selected?.id}"><span class="store-card-top"><span class="store-product-icon" style="--product-color:#c6e7d5">▦</span><span class="store-signal ${r.stockoutDays>20?'amber':'good'}"><i></i> ${r.stockoutDays} STOCKOUT DAYS</span></span><span class="store-product-name">Product ${formatId(r.id)}</span><span class="store-product-category">${categoryLabel(r)} · Store ${r.store}</span><span class="store-capacity"><span style="width:${Math.min(100,r.stockoutDays/90*100).toFixed(1)}%;background:#ecb185"></span></span><span class="store-product-foot"><span><strong>${fmt(r.meanSale,2)}</strong> normalized sales/day</span><strong>Open history ↗</strong></span></button>`).join('');
+  $$('[data-benchmark-product]').forEach(btn=>btn.addEventListener('click',()=>selectBenchmarkProduct(Number(btn.dataset.benchmarkProduct))));
+  return;
+ }
+ $('#storeCountBadge').textContent='5 EXAMPLE PRODUCTS';
  const cards=SKUS.map((sku,index)=>{
   const c=(sku.id===state.sku.id)?state.comparison:comparePolicies(sku,state.settings,state.seed+index*19);
   const t=c.policies[2].timeline;
@@ -79,7 +91,7 @@ function renderTradeoff(){
 }
 function renderOverview(){
  const c=state.comparison,base=c.policies[0],aware=c.policies[1],optimized=c.policies[2],m=optimized.metrics, e=c.estimate;
- const cards=[{label:'INVENTORY FILL RATE',value:pct(m.fillRate),note:'Fulfilled units / latent units',icon:'◈',cls:''},{label:'SIMULATED TOTAL COST',value:money(m.cost),note:'Purchases + carrying + waste + shortages',icon:'＄',cls:'kpi-blue'},{label:'UNMET DEMAND',value:fmt(m.unmet)+' units',note:'28-day simulated lost sales',icon:'↘',cls:'kpi-peach'},{label:'PERISHED INVENTORY',value:fmt(m.waste)+' units',note:'Expired and disposed in simulation',icon:'♧',cls:'kpi-lime'}];
+ const cards=[{label:'INVENTORY FILL RATE',value:pct(m.fillRate),note:'Fulfilled units / latent units',icon:'◈',cls:''},{label:'SCENARIO TOTAL COST',value:money(m.cost),note:'Illustrative scenario economics (assumed costs)',icon:'＄',cls:'kpi-blue'},{label:'UNMET DEMAND',value:fmt(m.unmet)+' units',note:'28-day scenario shortfall',icon:'↘',cls:'kpi-peach'},{label:'PERISHED INVENTORY',value:fmt(m.waste)+' units',note:'Modeled expiration, not observed spoilage',icon:'♧',cls:'kpi-lime'}];
  renderStoreGrid();
  $('#kpis').innerHTML=cards.map(x=>`<article class="kpi ${x.cls}"><div class="kpi-label">${x.label}<span class="kpi-icon">${x.icon}</span></div><div class="kpi-value">${x.value}</div><div class="kpi-note">${x.note}</div></article>`).join('');
  const tl=optimized.timeline;
@@ -89,15 +101,17 @@ function renderOverview(){
  const best=[...c.policies].sort((a,b)=>a.metrics.cost-b.metrics.cost)[0];
  $('#recommendationText').textContent=`The bounded freshness-aware policy orders ${fmt(m.orders)} units across 28 simulated days. Lowest realized cost in this scenario: ${names[best.policy]}.`;
  $('#policyList').innerHTML=c.policies.map(p=>`<div class="policy-row"><div><div class="policy-name">${names[p.policy]}</div><div class="policy-sub">28-day simulation result</div></div><div class="policy-result">${money(p.metrics.cost)}<small>${pct(p.metrics.fillRate)} fill rate</small></div></div>`).join('');
+ const indexFactor=state.currentRecord&&!state.loadedCSV?MODEL_INDEX_MULTIPLIER:1;
  const max=Math.max(e.naive,e.corrected,1)*1.2;
- $('#demandBars').innerHTML=`<div class="demand-bars"><div class="demand-row"><div class="demand-head"><strong>Recorded sales rate</strong><span>${fmt(e.naive,1)} units/day</span></div><div class="demand-track"><span style="width:${100*e.naive/max}%"></span></div></div><div class="demand-row"><div class="demand-head"><strong>Stockout-adjusted estimate</strong><span>${fmt(e.corrected,1)} units/day</span></div><div class="demand-track corrected"><span style="width:${100*e.corrected/max}%"></span></div></div><p class="demand-comment">${e.censoredDays} of the last ${Math.min(35,state.history.length)} historical days had unavailable hours. The adjustment is a heuristic estimate, not independently verified true demand.</p></div>`;
+ $('#demandBars').innerHTML=`<div class="demand-bars"><div class="demand-row"><div class="demand-head"><strong>Recorded sales rate</strong><span>${fmt(e.naive/indexFactor,2)} ${indexFactor>1?'normalized/day':'units/day'}</span></div><div class="demand-track"><span style="width:${100*e.naive/max}%"></span></div></div><div class="demand-row"><div class="demand-head"><strong>Stockout-adjusted estimate</strong><span>${fmt(e.corrected/indexFactor,2)} ${indexFactor>1?'normalized/day':'units/day'}</span></div><div class="demand-track corrected"><span style="width:${100*e.corrected/max}%"></span></div></div><p class="demand-comment">${e.censoredDays} of the last ${Math.min(35,state.history.length)} historical days had unavailable hours. The adjustment estimates unseen demand; actual lost sales remain unknown. Benchmark sales are normalized.</p></div>`;
  const sk=state.sku;
- $('#shelfVisual').innerHTML=`<div class="shelf-illustration"><div class="shelf-items">${SKUS.map(s=>`<div class="shelf-item" title="${escapeHTML(s.name)}">${s.icon}</div>`).join('')}</div><div class="shelf-bar"></div><div class="shelf-caption"><span>First-expiring-first-out rotation</span><span>5 modeled SKUs</span></div></div><div class="shelf-foot">◷ <span><strong>${escapeHTML(sk.name)}</strong> · assumed shelf life ${Math.max(1,sk.shelfLife+state.settings.shelfLifeOffset)} days</span></div>`;
+ const shelfSKUS=state.currentRecord?[state.sku]:SKUS;
+ $('#shelfVisual').innerHTML=`<div class="shelf-illustration"><div class="shelf-items">${shelfSKUS.map(s=>`<div class="shelf-item" title="${escapeHTML(s.name)}">${s.icon}</div>`).join('')}</div><div class="shelf-bar"></div><div class="shelf-caption"><span>First-expiring-first-out rotation</span><span>1 selected SKU model</span></div></div><div class="shelf-foot">◷ <span><strong>${escapeHTML(sk.name)}</strong> · assumed shelf life ${Math.max(1,sk.shelfLife+state.settings.shelfLifeOffset)} days</span></div>`;
 }
 function renderInventory(){
  const tl=state.comparison.policies[2].timeline,idx=Math.min(tl.length-1,Math.max(0,state.day-1)),r=tl[idx];
  $('#daySlider').max=tl.length;$('#daySlider').value=idx+1;$('#replayTitle').textContent=`Day ${String(idx+1).padStart(2,'0')} / ${tl.length}`;
- const fields=[['REALIZED DEMAND',r.demand],['FULFILLED SALES',r.sales],['ENDING STOCK',r.inventory],['UNMET DEMAND',r.missing]];
+ const fields=[['SIMULATED DEMAND',r.demand],['FULFILLED SALES',r.sales],['ENDING STOCK',r.inventory],['UNMET DEMAND',r.missing]];
  $('#dayMetrics').innerHTML=fields.map(([k,v])=>`<div class="day-metric"><small>${k}</small><strong>${fmt(v)}</strong></div>`).join('');
  const evt=r.missing?`A stockout prevented ${r.missing} unit(s) of simulated demand from being fulfilled.`:r.expired?`${r.expired} units reached their modeled expiration date.`:r.arrived?`${r.arrived} units arrived from a previously placed purchase order.`:'The inventory state advanced without a stockout or expiration event.';
  renderFlowLaboratory(r);
@@ -122,13 +136,96 @@ function navigate(view){if(!viewData[view])view='overview';$$('.view').forEach(e
 function downloadText(filename,data,type='text/plain'){const blob=new Blob([data],{type});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function csvValue(s){return '"'+String(s).replaceAll('"','""')+'"';}
 function exportLedger(){const t=state.comparison.policies[2].timeline;const rows=['day,demand,sales,lost,arrivals,expired,orders,closing_stock',...t.map(x=>[x.day,x.demand,x.sales,x.missing,x.arrived,x.expired,x.order,x.inventory].join(','))];downloadText('freshtwin-inventory-ledger.csv',rows.join('\n'),'text/csv');toast('Daily inventory ledger exported.');}
-function exportResults(){const payload={project:'FreshTwin',version:'0.2.0',dataSource:state.loadedCSV?'user-supplied browser CSV':'synthetic illustrated history',sku:state.sku.id,seed:state.seed,settings:state.settings,historyMetrics:state.comparison.estimate,policies:state.comparison.policies.map(x=>({policy:x.policy,metrics:x.metrics})),monteCarlo:state.experiment,trials:state.trials,disclaimer:'Outputs from a research prototype. Synthetic assumptions do not represent realized retail performance.'};downloadText('freshtwin-research-results.json',JSON.stringify(payload,null,2),'application/json');toast('Research results downloaded.');}
+function exportResults(){const payload={project:'FreshTwin',version:'0.3.0',dataSource:state.loadedCSV?'user-supplied browser CSV':state.currentRecord?'FreshRetailNet-50K real normalized history + assumed scenario parameters':'synthetic illustrated history',sku:state.sku.id,seed:state.seed,settings:state.settings,historyMetrics:state.comparison.estimate,policies:state.comparison.policies.map(x=>({policy:x.policy,metrics:x.metrics})),monteCarlo:state.experiment,trials:state.trials,dataset:state.catalog?{name:state.catalog.dataset,sha256:state.catalog.rawSha256,license:state.catalog.license,product:state.currentRecord?.id,store:state.currentRecord?.store}:null,disclaimer:'Observed benchmark sales are normalized. Inventory quantities, aging, demand simulations and monetary metrics are scenario assumptions, not observed store outcomes.'};downloadText('freshtwin-research-results.json',JSON.stringify(payload,null,2),'application/json');toast('Research results downloaded.');}
+const benchmarkShards=new Map();
+function updateSourceStatus(){
+ const real=Boolean(state.currentRecord&&!state.loadedCSV), imported=Boolean(state.loadedCSV);
+ $('#sourceState').textContent=imported?'User-imported observations':real?'FreshRetailNet-50K · observed sales':'Scenario demo data';
+ $('#sourceCaption').textContent=imported?'Session-only CSV · scenario assumptions apply':real?`Product ${formatId(state.currentRecord.id)} · Store ${state.currentRecord.store} · 90 days · normalized sales`:'Loading verified benchmark catalog, or using a clearly labeled fallback';
+ $('#sourceStateDot').className=`source-dot ${real?'real':imported?'imported':'demo'}`;
+ $('#metricScope').textContent=real?`Source: real normalized sales / stockouts. Decision outcomes use 10× scaled scenario units, assumed five-day shelf life and illustrative cost parameters. These are not retail financial results.`:
+   imported?'Observed CSV is used to calibrate a separate inventory scenario; economic parameters are assumed.':'Scenario quantities, inventory and costs are simulated, not measured retailer observations.';
+}
+function renderObservedHistory(){
+ const panel=$('#observedPanel');
+ if(!state.currentRows||state.loadedCSV){panel.hidden=true;return;}
+ panel.hidden=false;
+ const rows=state.currentRows, rec=state.currentRecord;
+ const max=Math.max(.01,...rows.map(x=>x.normalizedSales));
+ const width=980,height=210,L=39,R=14,T=22,B=33;
+ const w=(width-L-R)/rows.length;
+ let svg=`<svg role="img" aria-label="Observed normalized sales by day, with stockout days shown in orange" viewBox="0 0 ${width} ${height}">`;
+ for(let k=0;k<=4;k++){const y=T+(height-T-B)*k/4;svg+=`<line x1="${L}" y1="${y}" x2="${width-R}" y2="${y}" stroke="#e3ede7" stroke-dasharray="4 4"/><text x="${L-9}" y="${y+4}" fill="#77988a" font-size="11" text-anchor="end">${fmt(max*(1-k/4),1)}</text>`;}
+ rows.forEach((r,i)=>{const x=L+i*w+1,y=T+(height-T-B)*(1-r.normalizedSales/max),barHeight=T+(height-T-B)-y,color=r.unavailableHours?'#dd976f':'#1eaa88';svg+=`<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${Math.max(1,w-1.5).toFixed(2)}" height="${Math.max(.4,barHeight).toFixed(2)}" rx="1.4" fill="${color}"><title>${escapeHTML(r.date)}: ${fmt(r.normalizedSales,3)} normalized sale index · ${r.unavailableHours} stockout hours</title></rect>`;});
+ [0,29,59,89].forEach(idx=>{if(rows[idx])svg+=`<text x="${(L+idx*w).toFixed(2)}" y="${height-11}" text-anchor="start" font-size="10" fill="#719080">${escapeHTML(rows[idx].date.slice(5))}</text>`;});
+ $('#observedChart').innerHTML=svg+'</svg>';
+ $('#observedTitle').textContent=`Product ${formatId(rec.id)} · observed daily sales`;
+ $('#observedBadge').textContent=`STORE ${rec.store}`;
+ $('#observedContext').textContent=`Real normalized sales index from ${rows[0].date} to ${rows.at(-1).date}. Orange bars indicate recorded daytime stockouts; green bars show no recorded daytime stockout.`;
+ $('#observedSummary').innerHTML=`<strong>${fmt(rec.meanSale,2)}</strong><small>mean normalized sales/day</small><strong>${rec.stockoutDays}</strong><small>days with daytime stockouts</small>`;
+ const bt=pseudoStockoutBacktest(rows);
+ $('#observedBacktest').innerHTML=bt.available?`<strong>${fmt(bt.naiveMAE,3)} → ${fmt(bt.correctedMAE,3)}</strong><small>MAE, partial-day baseline → calibrated correction</small><span>Validation on ${bt.testDays} fully stocked days, with hourly sales artificially hidden after 2 PM. This is a pseudo-stockout test, not recovered real lost sales.</span>`:`<strong>Validation not available</strong><small>${escapeHTML(bt.reason)}</small>`;
+}
+function renderCatalog(){
+ if(!state.catalog)return;
+ const entries=filterCatalog(state.catalog.catalog,state.catalogFilter);
+ $('#catalogTotal').textContent=fmt(state.catalog.catalog.length);
+ $('#catalogContext').textContent=`${fmt(entries.length)} matching products · real 90-day histories · category and product IDs are anonymized`;
+ $('#catalogGrid').innerHTML=entries.slice(0,state.catalogLimit).map(r=>`<button type="button" class="catalog-item ${state.currentRecord?.id===r.id?'active':''}" data-product-id="${r.id}" aria-pressed="${state.currentRecord?.id===r.id}"><span class="catalog-item-head"><span class="catalog-icon">▦</span><span class="catalog-stockout ${r.stockoutDays>20?'risk':''}">${r.stockoutDays} stockout days</span></span><strong>Product ${formatId(r.id)}</strong><small>${categoryLabel(r)} · Store ${r.store}</small><span class="catalog-stats"><b>${fmt(r.meanSale,2)}</b> normalized sales/day <span>Explore →</span></span></button>`).join('')||'<div class="catalog-empty">No matching product IDs. Try another search or category.</div>';
+ $('#catalogShowing').textContent=`Showing ${fmt(Math.min(state.catalogLimit,entries.length))} of ${fmt(entries.length)}`;
+ $('#catalogMore').hidden=state.catalogLimit>=entries.length;
+ $$('[data-product-id]').forEach(el=>el.addEventListener('click',()=>selectBenchmarkProduct(Number(el.dataset.productId))));
+}
+async function selectBenchmarkProduct(id){
+ const record=state.catalog?.catalog.find(x=>x.id===id);if(!record)return;
+ const seq=++state.loadToken,part=Number(id)%16;
+ $('#catalogContext').textContent=`Loading verified history for Product ${formatId(id)}…`;
+ try{
+  if(!benchmarkShards.has(part)){
+   const response=await fetch(`./data/part-${String(part).padStart(2,'0')}.json`);
+   if(!response.ok)throw Error(`Historical shard was not available (HTTP ${response.status}).`);
+   benchmarkShards.set(part,await response.json());
+  }
+  const rows=decodeSeries(benchmarkShards.get(part),record);
+  if(seq!==state.loadToken)return;
+  state.currentRecord=record;state.currentRows=rows;state.benchmarkHistory=toScenarioHistory(rows);state.loadedCSV=null;state.sku=buildScenarioSku(record);state.day=1;
+  $('#skuSelect').value=state.sku.id;
+  $('#importMessage').textContent='';
+  refresh();renderCatalog();
+  toast(`Product ${formatId(id)} · Store ${record.store}: 90-day benchmark loaded.`);
+ }catch(err){if(seq!==state.loadToken)return;$('#catalogContext').textContent=`Could not load Product ${formatId(id)}: ${err.message}`;toast('Historical data could not be loaded.');}
+}
+async function loadBenchmarkCatalog(){
+ try{
+  const response=await fetch('./data/catalog.json',{cache:'no-cache'});
+  if(!response.ok)throw Error(`Benchmark catalog unavailable (HTTP ${response.status}).`);
+  state.catalog=parseCatalog(await response.json());
+  const groups=[...new Set(state.catalog.catalog.map(r=>r.category[0]))].sort((a,b)=>a-b);
+  $('#catalogCategory').innerHTML='<option value="all">All groups</option>'+groups.map(g=>`<option value="${g}">Group ${g}</option>`).join('');
+  $('#skuSelect').innerHTML=state.catalog.catalog.map(r=>`<option value="FRN-${r.id}">Product ${formatId(r.id)} · Store ${r.store}</option>`).join('');
+  renderCatalog();
+  const first=[...state.catalog.catalog].sort((a,b)=>b.meanSale-a.meanSale).find(r=>r.stockoutDays>0)||state.catalog.catalog[0];
+  await selectBenchmarkProduct(first.id);
+ }catch(err){
+  $('#catalogContext').innerHTML=`The historical catalog could not be loaded: ${escapeHTML(err.message)}. The five-product example remains usable, but it does not represent benchmark observations.`;
+  $('#sourceState').textContent='Example mode · historical dataset unavailable';
+  $('#sourceCaption').textContent='See dataset information in Methodology';
+  $('#catalogMore').hidden=true;
+  $('#catalogTotal').textContent='0';
+  toast('Historical dataset unavailable. Showing example mode.');
+ }
+}
 function bind(){
  $('#skuSelect').innerHTML=SKUS.map(s=>`<option value="${s.id}">${escapeHTML(s.name)} · ${s.id}</option>`).join('');
  $$('[data-nav]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();navigate(el.dataset.nav)}));
  $('#openLab').addEventListener('click',()=>navigate('experiments'));
  $('#storeToReplay').addEventListener('click',()=>navigate('inventory'));
- $('#skuSelect').addEventListener('change',e=>{state.sku=SKUS.find(s=>s.id===e.target.value)||SKUS[0];state.loadedCSV=null;state.day=1;refresh();toast('Selected SKU loaded.');});
+ $('#sourceToggle').addEventListener('click',()=>{const detail=$('#sourceDetail'),opened=detail.hidden;detail.hidden=!opened;$('#sourceToggle').setAttribute('aria-expanded',String(opened));});
+ $('#catalogSearch').addEventListener('input',e=>{state.catalogFilter.search=e.target.value;state.catalogLimit=12;renderCatalog();});
+ $('#catalogCategory').addEventListener('change',e=>{state.catalogFilter.group=e.target.value;state.catalogLimit=12;renderCatalog();});
+ $('#catalogSort').addEventListener('change',e=>{state.catalogFilter.sort=e.target.value;state.catalogLimit=12;renderCatalog();});
+ $('#catalogMore').addEventListener('click',()=>{state.catalogLimit+=12;renderCatalog();});
+ $('#skuSelect').addEventListener('change',e=>{if(e.target.value.startsWith('FRN-')){selectBenchmarkProduct(Number(e.target.value.slice(4)));return;}state.sku=SKUS.find(s=>s.id===e.target.value)||SKUS[0];state.loadedCSV=null;state.day=1;refresh();toast('Selected SKU loaded.');});
  $('#seedInput').addEventListener('change',e=>{state.seed=Math.max(1,Math.min(999999,Math.floor(Number(e.target.value)||42)));e.target.value=state.seed;state.day=1;refresh();});
  $('#replayBtn').addEventListener('click',()=>{state.seed=state.seed+1;$('#seedInput').value=state.seed;state.day=1;refresh();toast('New reproducible scenario generated.');});
  $('#runBtn').addEventListener('click',()=>{refresh();toast('Three replenishment policies evaluated.');});
@@ -139,9 +236,10 @@ function bind(){
  $('#experimentBtn').addEventListener('click',()=>{settingsFromControls();refresh();toast(`Experiment complete: ${state.trials} paired simulation trials.`);});
  $('#exportBtn').addEventListener('click',exportResults);$('#ledgerExportBtn').addEventListener('click',exportLedger);
  $('#csvFile').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>2_000_000)throw Error('CSV is too large (2 MB maximum).');state.loadedCSV=parseUserCSV(await f.text(),state.sku.id);state.day=1;$('#importMessage').className='import-message';$('#importMessage').textContent=`Imported ${state.loadedCSV.length} records for ${state.sku.id}. Data remains in this browser session.`;refresh();toast('User CSV imported for this SKU.');}catch(err){$('#importMessage').className='import-message error';$('#importMessage').textContent=err.message;toast('CSV import failed. Check the expected columns.');}finally{e.target.value='';}});
- $('#clearFile').addEventListener('click',()=>{state.loadedCSV=null;$('#importMessage').textContent='Restored deterministic synthetic observations.';$('#importMessage').className='import-message';refresh();toast('Synthetic data restored.');});
+ $('#clearFile').addEventListener('click',()=>{state.loadedCSV=null;$('#importMessage').textContent=state.currentRecord?'Restored public benchmark observations.':'Restored sample observations.';$('#importMessage').className='import-message';refresh();toast('Synthetic data restored.');});
  $('#downloadSample').addEventListener('click',()=>{const hist=generateHistory(state.sku,42).slice(0,15),rows=['date,sales,stockout_hours,sku',...hist.map(x=>[x.date,x.sales,x.unavailableHours,state.sku.id].join(','))];downloadText(`example-${state.sku.id}.csv`,rows.join('\n'),'text/csv');});
  window.addEventListener('hashchange',()=>navigate((location.hash||'#overview').slice(1)));
  settingsFromControls();refresh();navigate((location.hash||'#overview').slice(1));
 }
 bind();
+loadBenchmarkCatalog();
