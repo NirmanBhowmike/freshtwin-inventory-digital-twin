@@ -7,6 +7,9 @@ on:
       - 'scripts/**'
       - '.github/workflows/browser-acceptance.yml'
   workflow_dispatch:
+concurrency:
+  group: browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

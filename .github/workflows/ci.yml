@@ -4,6 +4,9 @@ on:
     branches: [main, 'feat/**']
   pull_request:
     branches: [main]
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -18,30 +21,3 @@ jobs:
       - run: npm run build
       - name: Check deployment bundle
         run: test -s dist/index.html && test -s dist/app.js && test -s dist/engine.js && test -s dist/styles.css
-
-  browser:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install Chromium browser harness
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Test interactive app with actual benchmark shards
-        run: |
-          npm run dev > /tmp/freshtwin-preview.log 2>&1 &
-          APP_PID=$!
-          trap 'kill "$APP_PID" || true' EXIT
-          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:4173/ > /dev/null; then break; fi; sleep 1; done
-          node scripts/browser_acceptance.mjs
-      - name: Capture browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: fresh-twin-browser-qa
-          path: .browser-artifacts/
-          if-no-files-found: ignore
