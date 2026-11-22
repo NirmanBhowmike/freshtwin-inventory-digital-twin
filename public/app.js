@@ -191,24 +191,35 @@ function renderCatalog(){
  $('#catalogMore').hidden=state.catalogLimit>=entries.length;
  $$('[data-product-id]').forEach(el=>el.addEventListener('click',()=>selectBenchmarkProduct(Number(el.dataset.productId))));
 }
+const shardRequests=new Map();
 async function selectBenchmarkProduct(id){
  const record=state.catalog?.catalog.find(x=>x.id===id);if(!record)return;
- const seq=++state.loadToken,part=Number(id)%16;
- $('#catalogContext').textContent=`Loading verified history for Product ${formatId(id)}…`;
+ const seq=++state.loadToken,part=id%16;
+ setBusy(true);$('#catalogContext').textContent=`Loading verified Product ${formatId(id)} · Store ${record.store}…`;
  try{
-  if(!benchmarkShards.has(part)){
-   const response=await fetch(`./data/part-${String(part).padStart(2,'0')}.json`);
-   if(!response.ok)throw Error(`Historical shard was not available (HTTP ${response.status}).`);
-   benchmarkShards.set(part,await response.json());
+  let shard=benchmarkShards.get(part);
+  if(!shard){
+   let request=shardRequests.get(part);
+   if(!request){
+    request=fetch(`./data/part-${String(part).padStart(2,'0')}.json`).then(res=>{if(!res.ok)throw Error(`Historical shard unavailable (HTTP ${res.status}).`);return res.json();}).finally(()=>shardRequests.delete(part));
+    shardRequests.set(part,request);
+   }
+   shard=await request;benchmarkShards.set(part,shard);
   }
-  const rows=decodeSeries(benchmarkShards.get(part),record);
-  if(seq!==state.loadToken)return;
-  state.currentRecord=record;state.currentRows=rows;state.benchmarkHistory=toScenarioHistory(rows);state.loadedCSV=null;state.sku=buildScenarioSku(record);state.day=1;
-  $('#skuSelect').value=state.sku.id;
-  $('#importMessage').textContent='';
+  const rows=decodeSeries(shard,record);
+  if(seq!==state.loadToken||state.mode!=='benchmark')return;
+  state.currentRecord=record;state.currentRows=rows;state.benchmarkHistory=toScenarioHistory(rows);
+  state.loadedCSV=null;state.sku=buildScenarioSku(record);state.day=1;
+  $('#skuSelect').value=state.sku.id;$('#importMessage').textContent='';
   refresh();renderCatalog();
-  toast(`Product ${formatId(id)} · Store ${record.store}: 90-day benchmark loaded.`);
- }catch(err){if(seq!==state.loadToken)return;$('#catalogContext').textContent=`Could not load Product ${formatId(id)}: ${err.message}`;toast('Historical data could not be loaded.');}
+  $('#catalogContext').textContent=`Product ${formatId(id)} · Store ${record.store} · 90 verified observed days`;
+  toast(`Product ${formatId(id)} · Store ${record.store}: history loaded.`);
+ }catch(err){
+  if(seq!==state.loadToken||state.mode!=='benchmark')return;
+  $('#catalogContext').textContent=`Could not load Product ${formatId(id)}: ${err.message}`;
+  $('#skuSelect').value=state.sku.id;
+  toast('History load failed. Earlier selection remains unchanged.');
+ }finally{if(seq===state.loadToken)setBusy(false);}
 }
 async function loadBenchmarkCatalog(){
  try{
@@ -217,21 +228,59 @@ async function loadBenchmarkCatalog(){
   state.catalog=parseCatalog(await response.json());
   const groups=[...new Set(state.catalog.catalog.map(r=>r.category[0]))].sort((a,b)=>a-b);
   $('#catalogCategory').innerHTML='<option value="all">All groups</option>'+groups.map(g=>`<option value="${g}">Group ${g}</option>`).join('');
-  $('#skuSelect').innerHTML=state.catalog.catalog.map(r=>`<option value="FRN-${r.id}">Product ${formatId(r.id)} · Store ${r.store}</option>`).join('');
+  if(state.mode==='benchmark')$('#skuSelect').innerHTML=state.catalog.catalog.map(r=>`<option value="FRN-${r.id}">Product ${formatId(r.id)} · Store ${r.store}</option>`).join('');
   renderCatalog();
   const first=[...state.catalog.catalog].sort((a,b)=>b.meanSale-a.meanSale).find(r=>r.stockoutDays>0)||state.catalog.catalog[0];
-  await selectBenchmarkProduct(first.id);
+  if(state.mode==='benchmark')await selectBenchmarkProduct(first.id);else workspace?.render();
  }catch(err){
-  $('#catalogContext').innerHTML=`The historical catalog could not be loaded: ${escapeHTML(err.message)}. The five-product example remains usable, but it does not represent benchmark observations.`;
-  $('#sourceState').textContent='Example mode · historical dataset unavailable';
-  $('#sourceCaption').textContent='See dataset information in Methodology';
+  $('#catalogContext').textContent=`Benchmark catalog unavailable: ${err.message}. The named vegetable simulation remains functional.`;
+  $('#sourceState').textContent=state.mode==='vegetable'?'Vegetable demonstration · illustrative':'Benchmark unavailable';
+  $('#sourceCaption').textContent='The real benchmark needs its attributed data assets. See Methodology.';
   $('#catalogMore').hidden=true;
   $('#catalogTotal').textContent='0';
-  toast('Historical dataset unavailable. Showing example mode.');
+  toast('Real benchmark unavailable; vegetable simulation remains usable.');
  }
 }
+function selectVegetable(id){
+ const original=VEGETABLES.find(v=>v.id===id);if(!original)return;
+ state.loadToken++;state.loading=false;state.mode='vegetable';
+ state.sku=state.vegOverrides[id]||original;state.currentRecord=null;state.currentRows=null;state.benchmarkHistory=null;state.loadedCSV=null;state.day=1;
+ $('#leadRange').value=state.sku.leadTime??1;settingsFromControls();
+ $('#skuSelect').innerHTML=VEGETABLES.map(v=>`<option value="${v.id}">${escapeHTML(v.name)} · ${v.id}</option>`).join('');
+ $('#skuSelect').value=id;$('#importMessage').textContent='';
+ refresh();toast(`${state.sku.name} · illustrative vegetable scenario selected.`);
+}
+function setMode(mode,id){
+ if(mode==='benchmark'){
+   if(!state.catalog){toast('The benchmark catalog is still loading; please try again shortly.');return;}
+   state.mode='benchmark';state.loadedCSV=null;
+   $('#skuSelect').innerHTML=state.catalog.catalog.map(r=>`<option value="FRN-${r.id}">Product ${formatId(r.id)} · Store ${r.store}</option>`).join('');
+   const first=state.catalog.catalog.find(r=>r.id===id)||state.currentRecord||state.catalog.catalog[0];
+   workspace?.render();selectBenchmarkProduct(first.id);return;
+ }
+ selectVegetable(VEGETABLES.find(v=>v.id===id)?.id||VEGETABLES[0].id);
+}
+function updateVegetable(key,value){
+ if(state.mode!=='vegetable')return;
+ const next=validateVegetable({...state.sku,[key]:value});
+ state.vegOverrides[state.sku.id]=next;state.sku=next;
+ if(key==='leadTime')$('#leadRange').value=next.leadTime;
+ settingsFromControls();state.day=1;refresh();
+}
+function resetVegetable(){
+ if(state.mode!=='vegetable')return;
+ delete state.vegOverrides[state.sku.id];selectVegetable(state.sku.id);toast('Vegetable assumptions restored to illustrated defaults.');
+}
+function resetScenario(){
+ state.seed=42;$('#seedInput').value=42;
+ $('#demandRange').value=100;$('#leadRange').value=state.sku.leadTime??1;$('#shelfRange').value=0;$('#shortageRange').value=10;$('#trialRange').value=24;
+ state.day=1;settingsFromControls();refresh();toast('Seed and scenario controls reset to the default baseline.');
+}
+function markDirty(){state.dirty=true;const d=$('#dirtyResults');if(d){d.hidden=false;d.textContent='Parameters changed · click Evaluate all policies to update the results.';}}
+function setBusy(busy){state.loading=busy;$('#runBtn').disabled=busy;$('#experimentBtn').disabled=busy;$('#exportBtn').disabled=busy;$('#catalogContext').setAttribute('aria-busy',String(busy));}
 function bind(){
- $('#skuSelect').innerHTML=SKUS.map(s=>`<option value="${s.id}">${escapeHTML(s.name)} · ${s.id}</option>`).join('');
+ $('#skuSelect').innerHTML=VEGETABLES.map(s=>`<option value="${s.id}">${escapeHTML(s.name)} · ${s.id}</option>`).join('');
+ workspace=createWorkspace({state,onMode:setMode,onSelect:selectVegetable,onUpdate:updateVegetable,onReset:resetVegetable});workspace.bind();
  $$('[data-nav]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();navigate(el.dataset.nav)}));
  $('#openLab').addEventListener('click',()=>navigate('experiments'));
  $('#storeToReplay').addEventListener('click',()=>navigate('inventory'));
@@ -240,18 +289,19 @@ function bind(){
  $('#catalogCategory').addEventListener('change',e=>{state.catalogFilter.group=e.target.value;state.catalogLimit=12;renderCatalog();});
  $('#catalogSort').addEventListener('change',e=>{state.catalogFilter.sort=e.target.value;state.catalogLimit=12;renderCatalog();});
  $('#catalogMore').addEventListener('click',()=>{state.catalogLimit+=12;renderCatalog();});
- $('#skuSelect').addEventListener('change',e=>{if(e.target.value.startsWith('FRN-')){selectBenchmarkProduct(Number(e.target.value.slice(4)));return;}state.sku=SKUS.find(s=>s.id===e.target.value)||SKUS[0];state.loadedCSV=null;state.day=1;refresh();toast('Selected SKU loaded.');});
+ $('#skuSelect').addEventListener('change',e=>{if(e.target.value.startsWith('FRN-')){setMode('benchmark',Number(e.target.value.slice(4)));return;}selectVegetable(e.target.value);});
  $('#seedInput').addEventListener('change',e=>{state.seed=Math.max(1,Math.min(999999,Math.floor(Number(e.target.value)||42)));e.target.value=state.seed;state.day=1;refresh();});
  $('#replayBtn').addEventListener('click',()=>{state.seed=state.seed+1;$('#seedInput').value=state.seed;state.day=1;refresh();toast('New reproducible scenario generated.');});
  $('#runBtn').addEventListener('click',()=>{refresh();toast('Three replenishment policies evaluated.');});
  $('#prevDay').addEventListener('click',()=>{state.day=Math.max(1,state.day-1);renderInventory();});
  $('#nextDay').addEventListener('click',()=>{state.day=Math.min(state.settings.days,state.day+1);renderInventory();});
  $('#daySlider').addEventListener('input',e=>{state.day=Number(e.target.value);renderInventory();});
- for(const id of ['demandRange','leadRange','shelfRange','shortageRange','trialRange'])$('#'+id).addEventListener('input',settingsFromControls);
+ for(const id of ['demandRange','leadRange','shelfRange','shortageRange','trialRange'])$('#'+id).addEventListener('input',()=>{settingsFromControls();markDirty();});
+ $('#resetBtn').addEventListener('click',resetScenario);
  $('#experimentBtn').addEventListener('click',()=>{settingsFromControls();refresh();toast(`Experiment complete: ${state.trials} paired simulation trials.`);});
  $('#exportBtn').addEventListener('click',exportResults);$('#ledgerExportBtn').addEventListener('click',exportLedger);
  $('#csvFile').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>2_000_000)throw Error('CSV is too large (2 MB maximum).');state.loadedCSV=parseUserCSV(await f.text(),state.sku.id);state.day=1;$('#importMessage').className='import-message';$('#importMessage').textContent=`Imported ${state.loadedCSV.length} records for ${state.sku.id}. Data remains in this browser session.`;refresh();toast('User CSV imported for this SKU.');}catch(err){$('#importMessage').className='import-message error';$('#importMessage').textContent=err.message;toast('CSV import failed. Check the expected columns.');}finally{e.target.value='';}});
- $('#clearFile').addEventListener('click',()=>{state.loadedCSV=null;$('#importMessage').textContent=state.currentRecord?'Restored public benchmark observations.':'Restored sample observations.';$('#importMessage').className='import-message';refresh();toast('Synthetic data restored.');});
+ $('#clearFile').addEventListener('click',()=>{state.loadedCSV=null;$('#importMessage').textContent=state.mode==='benchmark'?'Restored attributed benchmark observations.':'Restored illustrative vegetable observations.';$('#importMessage').className='import-message';refresh();toast('Source observations restored.');});
  $('#downloadSample').addEventListener('click',()=>{const hist=generateHistory(state.sku,42).slice(0,15),rows=['date,sales,stockout_hours,sku',...hist.map(x=>[x.date,x.sales,x.unavailableHours,state.sku.id].join(','))];downloadText(`example-${state.sku.id}.csv`,rows.join('\n'),'text/csv');});
  window.addEventListener('hashchange',()=>navigate((location.hash||'#overview').slice(1)));
  settingsFromControls();refresh();navigate((location.hash||'#overview').slice(1));
