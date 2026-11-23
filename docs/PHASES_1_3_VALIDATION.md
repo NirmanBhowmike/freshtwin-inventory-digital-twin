@@ -1,3 +1,5 @@
+> Historical Phase 1–3 validation record for the v0.4 single-SKU release. For current multi-product functionality see v0.5 model documentation.
+
 # Phases 1–3 validation and engineering change log
 
 Date: 2026-11-22. Working release: FreshTwin v0.4, development branch `feat/phases-1-3-validated-vegetable-modes`.
@@ -40,13 +42,13 @@ Date: 2026-11-22. Working release: FreshTwin v0.4, development branch `feat/phas
 
 ## Known limits / release gate
 
-Do not call this a validated physical-store digital twin. No model can identify real lost demand from anonymous normalized sales alone without further assumptions and testing. No real unit economics or grocery purchase orders are known. Phase 4 (joint capacity and budget) remains blocked until Phase 1–3 checks and deployment are verified. The course recording and two-page submission discussion remain separate follow-up work.
-## Verified pre-merge browser gate (2026-11-22)
+Do not call this a validated physical-store digital twin. No model can identify real lost demand from anonymous normalized sales alone without further assumptions and testing. No real unit economics or grocery purchase orders are known. The initial Phase 1–3 validation passed before the v0.5 joint-capacity and budget implementation; see `docs/PHASE4_JOINT_OPTIMIZATION.md` for its independent scope.
+## Historical v0.4 browser gate (2026-11-22)
 - [Chromium interactive acceptance run](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085398138): **24 passes, 0 failures**, no uncaught browser errors or failed benchmark asset responses.
 - [Node tests and static build](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085398163): **28 tests passed**, 0 failures; build succeeded.
 - Confirmed rapid product requests select the newest ID, restore seed reproduces chart, 128 paired trials render, CSV and research exports work, inventory ledger reconciles, and 390/768/1512px document widths do not overflow.
 - These are **real Chromium tests against GitHub's preview server**, not an assertion of verified Cloudflare production deployment.
-- Phase 4 remains out of scope until this review is merged and Cloudflare production has been checked.
+- At the time of this historical v0.4 validation, Phase 4 was separate; it is now implemented and production-verified in v0.5.
 
 ## Live Cloudflare production acceptance — verified
 
@@ -54,4 +56,4 @@ Do not call this a validated physical-store digital twin. No model can identify 
 - Its preflight verified the production page served `Version 0.4.0` and the attributed FreshRetailNet-50K catalog endpoint was accessible.
 - The same **24/24 Chromium browser checks passed against the public workers.dev URL**. This includes named vegetable/benchmark modes, real dataset, rapid product selection, seed reproducibility, cost/expiration ledger, 128-trial evaluation, exports, mobile and desktop widths, and no uncaught JavaScript or benchmark network errors.
 - The final main branch static build and Node unit checks also passed: [CI run](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085856539).
-- This establishes a functioning deployment, not empirically calibrated costs, validated real lost demand, or global optimization guarantees. Phase 4 remains unstarted.
+- This establishes a functioning deployment, not empirically calibrated costs, validated real lost demand, or global optimization guarantees. Phase 4 was implemented and production-verified subsequently in v0.5.

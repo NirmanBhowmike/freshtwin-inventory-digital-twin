@@ -158,3 +158,6 @@ vite.config.ts.timestamp-*
 
 # FreshRetailNet raw parquet cache
 .freshretail-cache/
+
+# Ephemeral numerical sensitivity outputs
+benchmark-results/
