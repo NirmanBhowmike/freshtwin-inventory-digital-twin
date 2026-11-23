@@ -38,7 +38,9 @@ jobs:
           npm install --no-save playwright
           npx playwright install --with-deps chromium
       - name: Run complete 24-check acceptance against live production
-        run: node scripts/browser_acceptance.mjs
+        run: |
+          node scripts/browser_acceptance.mjs
+          node scripts/joint_browser_acceptance.mjs
       - name: Preserve screenshots and measured browser outcomes
         if: always()
         uses: actions/upload-artifact@v4
