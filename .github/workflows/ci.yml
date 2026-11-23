@@ -18,6 +18,14 @@ jobs:
         with:
           node-version: 22
       - run: npm run check
+      - name: Joint allocation sensitivity benchmark
+        run: npm run benchmark
       - run: npm run build
+      - name: Preserve optimization benchmark JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: freshtwin-numerical-benchmarks
+          path: benchmark-results/joint-summary.json
+          if-no-files-found: error
       - name: Check deployment bundle
         run: test -s dist/index.html && test -s dist/app.js && test -s dist/engine.js && test -s dist/styles.css && test -s dist/joint.js && test -s dist/joint-ui.js && test -s dist/joint.css
