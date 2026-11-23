@@ -51,3 +51,14 @@ Updated: 2026-11-22 · target release **v0.4.0** · source branch `feat/phases-1
 - **Real public Cloudflare browser** verification: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085856763 — PASS, 24/24 checks; real catalog and all workflows functional on publicly deployed application, zero uncaught JavaScript/network data errors.
 - Source project, math engine and data verification: 28/28 Node tests and build PASS, https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45085398163.
 - **Phases 1, 2, 3: implemented and verified. Phase 4: intentionally NOT started.** Course recording and student-authored Word discussion intentionally deferred.
+
+## v0.5 Phase 4 implementation — 2026-11-22 / 2026-11-23 UTC
+- Source branch: `feat/v05-joint-inventory-optimization`; PR #9; do not infer merged or deployed before checking.
+- Code: `src/joint.js` and `public/joint-ui.js`, `public/joint.css`, dedicated `#joint` UI section of `public/index.html`. New Phase 4 docs `docs/PHASE4_JOINT_OPTIMIZATION.md` and `docs/PHASE4_DEMO_STORYBOARD.md`.
+- Coherent synthetic single-store SKU set; shared total-horizon procurement budget and conservative refrigerated-volume reservation (on hand + all pending orders); FEFO stock conservation and terminal asset accounting; three policies under the same constraints and paired demand paths.
+- Joint allocation is a sampled, bounded, greedy incremental-cost heuristic, not a globally optimal MILP/stochastic control solver.
+- UI: budget, storage, demand, horizon, seed, trials, included products, capital/capacity plots, per-SKU daily replay, JSON/CSV research exports, interactive reassessment. Edits to named vegetable source assumptions propagate.
+- Deterministic and exact small-instance oracle tests added (`tests/joint.test.js`); 42/42 Node regression tests and feature-branch static build passed https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45087305531.
+- Chromium acceptance: new `scripts/joint_browser_acceptance.mjs` (12 checks) runs after original 24, for preview and on actual Cloudflare URL. Do not merge until all 36 pass.
+- Phase4 recording storyboard exists, but do not claim a recorded or narrated video exists until actual artifacts are produced and reviewed.
+- User's end-of-semester two-page Word report and oral narration must not claim measured cost savings or calibrated real demand.

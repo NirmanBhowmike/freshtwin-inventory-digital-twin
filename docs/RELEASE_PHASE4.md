@@ -5,7 +5,7 @@
 - [x] Add three constrained policies, paired synthetic scenario paths, FEFO age/expiry ledger and terminal inventory cost.
 - [x] Add reproducibility and small-instance independent exhaustive oracle.
 - [x] Create accessible Joint Store interface, KPI/constraint plots and exportable daily ledger.
-- [ ] `npm run check` passes on feature branch.
+- [x] `npm run check` passes on feature branch — 42/42 Node regressions and build pass, GitHub run #45087305531.
 - [ ] GitHub Actions real Chromium acceptance and 390px responsiveness passes.
 - [ ] Merge PR through protected `main`; verify GitHub build.
 - [ ] Verify public Cloudflare v0.5 and real 24-check production acceptance.
