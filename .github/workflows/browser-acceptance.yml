@@ -39,4 +39,5 @@ jobs:
         with:
           name: freshtwin-browser-acceptance
           path: .browser-artifacts/
-          if-no-files-found: ignore
+          if-no-files-found: error
+          include-hidden-files: true

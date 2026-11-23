@@ -6,6 +6,7 @@ on:
       - 'public/**'
       - 'src/**'
       - 'scripts/record_guided_demo.mjs'
+      - 'scripts/build_assignment_evidence_docx.py'
       - '.github/workflows/captioned-demo.yml'
   workflow_dispatch:
 permissions:
@@ -50,10 +51,16 @@ jobs:
               -c:v libx264 -pix_fmt yuv420p -preset fast -crf 23 -movflags +faststart \
               .demo-artifacts/FreshTwin_v05_Captioned_Demonstration.mp4
           fi
+      - name: Build instructor-aligned two-page research worksheet from real screenshots
+        run: |
+          python -m pip install --quiet python-docx pillow
+          python scripts/build_assignment_evidence_docx.py
+          test -s .demo-artifacts/FreshTwin_Quick_AI_Assignment_Two_Page_Review_Draft.docx
       - name: Publish actual recording and 8 screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: FreshTwin-v05-actual-browser-video-and-screenshots
           path: .demo-artifacts/
-          if-no-files-found: ignore
+          if-no-files-found: error
+          include-hidden-files: true
