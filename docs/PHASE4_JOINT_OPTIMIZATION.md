@@ -86,3 +86,9 @@ GitHub Actions deployment checks must exercise **the real public Cloudflare Work
 ## 8. Further research
 
 A stronger subsequent contribution would compare the greedy allocator against (i) a global mixed-integer solver on reduced instances, (ii) a genuine multi-stage stochastic program with scenarios and nonanticipativity, (iii) rolling-horizon adaptive demand learning and (iv) distributionally robust costs with simultaneous service level constraints. It would also require permissioned perishable SKU observations with physical units, receipts and age data, or an independently calibrated simulated-data generating process.
+## Verified research references (methodological background only)
+
+1. Wang, Y., Gu, J., Long, L., Li, X., Shen, L., Fu, Z., Zhou, X., and Jiang, X. (2025). *FreshRetailNet-50K: A Stockout-Annotated Censored Demand Dataset for Latent Demand Recovery and Forecasting in Fresh Retail.* arXiv:2505.16319. https://arxiv.org/abs/2505.16319. Publisher-origin dataset: https://huggingface.co/datasets/Dingdong-Inc/FreshRetailNet-50K.
+2. Sharma, S., Abouee-Mehrizi, H., and Sartor, G. (2020). *Inventory Management under Storage and Order Restrictions.* *Production and Operations Management*, 29(1). https://doi.org/10.1111/poms.13097.
+
+These papers motivate the problem setting; the FreshTwin demonstration **does not claim** to reproduce their trained estimators, optimal policies or reported performance. The source benchmark paper's abstract reports 863 SKUs, while the verified released dataset catalog currently contains 865 IDs; this application uses and transparently reports the latter released-data count.

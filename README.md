@@ -6,9 +6,9 @@
 
 **Live interface:** navigate to **Joint store lab** for editable budget, capacity, demand intensity, seed, trial count, and SKU selection; auditable volume/capital trajectories; day-by-day stock conservation; empirical Monte Carlo tail risk and confidence intervals; reproducible JSON and CSV. Individual vegetable assumption edits propagate into this scenario.
 
-**Scientific limits:** the coupled decision rule uses a bounded sampled marginal-value heuristic with integer polishing, not a globally optimal multistage program. This lab does **not** combine anonymized benchmark product histories from different physical retailers. **The solver may rank below a simple baseline under some assumptions; this outcome must be reported honestly.** Full formulation: [Phase 4 mathematical specification](docs/PHASE4_JOINT_OPTIMIZATION.md); narrated demonstration plan: [recording storyboard](docs/PHASE4_DEMO_STORYBOARD.md).
+**Scientific limits:** the coupled decision rule uses a bounded sampled marginal-value heuristic with integer polishing, not a globally optimal multistage program. This lab does **not** combine anonymized benchmark product histories from different physical retailers. **The solver may rank below a simple baseline under some assumptions; this outcome must be reported honestly.** Full formulation: [Phase 4 mathematical specification](docs/PHASE4_JOINT_OPTIMIZATION.md); narrated demonstration plan: [recording storyboard](docs/PHASE4_DEMO_STORYBOARD.md) and [narration rehearsal guide](docs/PHASE4_NARRATION.md).
 
-**Acceptance gate:** 42/42 GitHub Node tests and static build passed on the feature branch; full Chromium browser checks and Cloudflare public deployment are required before calling v0.5 released.
+**Acceptance gate:** 42/42 Node tests and static build passed, and all 36/36 actual Chromium checks passed on the feature-branch server: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45087586964. Public Cloudflare deployment must still be verified after merging.
 
 ## FreshTwin v0.4 — Phases 1–3 (preserved prior release): safer decisions and two operating modes
 

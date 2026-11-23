@@ -62,3 +62,7 @@ Updated: 2026-11-22 · target release **v0.4.0** · source branch `feat/phases-1
 - Chromium acceptance: new `scripts/joint_browser_acceptance.mjs` (12 checks) runs after original 24, for preview and on actual Cloudflare URL. Do not merge until all 36 pass.
 - Phase4 recording storyboard exists, but do not claim a recorded or narrated video exists until actual artifacts are produced and reviewed.
 - User's end-of-semester two-page Word report and oral narration must not claim measured cost savings or calibrated real demand.
+
+## Feature-branch browser acceptance confirmed
+- [GitHub Playwright Chromium run #45087586964](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45087586964) **PASSED 24/24 original browser checks plus 12/12 new joint-store browser checks**. Entire branch: 36/36. Version v0.5 joint lab, ten named SKUs, fair constraints, ledger, stress tests, exports and 390/768/1512px non-overflow confirmed.
+- Source JS validated with 42/42 Node tests and production build. Authored a captioned live production screen recording workflow; it must run after actual Cloudflare deployment, and successful artifact production must be checked before claiming a video exists.
