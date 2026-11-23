@@ -62,4 +62,5 @@ jobs:
         with:
           name: FreshTwin-v05-actual-browser-video-and-screenshots
           path: .demo-artifacts/
-          if-no-files-found: ignore
+          if-no-files-found: error
+          include-hidden-files: true
