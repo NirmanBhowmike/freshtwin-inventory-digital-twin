@@ -20,4 +20,4 @@ jobs:
       - run: npm run check
       - run: npm run build
       - name: Check deployment bundle
-        run: test -s dist/index.html && test -s dist/app.js && test -s dist/engine.js && test -s dist/styles.css
+        run: test -s dist/index.html && test -s dist/app.js && test -s dist/engine.js && test -s dist/styles.css && test -s dist/joint.js && test -s dist/joint-ui.js && test -s dist/joint.css

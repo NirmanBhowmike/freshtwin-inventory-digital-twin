@@ -23,8 +23,8 @@ jobs:
         run: |
           ready=0
           for i in $(seq 1 20); do
-            if curl --fail --silent --show-error --location --compressed --max-time 20 "$FRESHTWIN_URL" | grep -q 'Version 0.4.0'; then
-              echo "FreshTwin 0.4.0 is available on the public Cloudflare endpoint."
+            if curl --fail --silent --show-error --location --compressed --max-time 20 "$FRESHTWIN_URL" | grep -q 'Version 0.5.0'; then
+              echo "FreshTwin 0.5.0 is available on the public Cloudflare endpoint."
               ready=1
               break
             fi
