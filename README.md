@@ -1,5 +1,14 @@
 # FreshTwin
 
+## Verified v0.5 production and demonstration release — November 22, 2026 (US/Central)
+
+- **Live Cloudflare Workers:** https://freshtwin-inventory-digital-twin.nirman-bhowmike.workers.dev/ — v0.5 deployed and independently checked.
+- **Source:** merged [PR #9](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/pull/9); later recording/evidence [PR #10](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/pull/10).
+- **Technical tests:** 42/42 unit tests, build success; 36/36 browser acceptance checks on live site ([GitHub production QA](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45088531951)).
+- **Genuine screen recording:** 15 captioned scene segments, ~2 minutes 24 seconds, eight screenshots, [downloadable recorded evidence from GitHub Actions](https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45088531892/artifacts/14780725120). Video is silent/captioned, not a synthesized voiceover.
+- **Course evidence:** an exactly two-page DOCX review worksheet generated from **actual public-site screenshots and calculated model outputs** and included in the same artifact. The user must review, personalize and independently submit their own discussion.
+- **Scientific scope:** this is a functional assumption-driven digital-twin simulation with real anonymized benchmark context, not a field-calibrated retail operational twin or guaranteed globally optimal solver. The named vegetables never represent decoded benchmark identities.
+
 ## FreshTwin v0.5 — Phase 4: One store, jointly optimized
 
 **New Joint Store Lab:** ten named vegetables can be managed together in one **illustrative synthetic store** with a shared refrigerated-volume ceiling and one purchasing budget for the entire planning horizon. The three constrained policies are evaluated on matched future-demand paths, with FEFO batch aging, supplier lead times, and explicit terminal inventory valuation.
@@ -8,7 +17,7 @@
 
 **Scientific limits:** the coupled decision rule uses a bounded sampled marginal-value heuristic with integer polishing, not a globally optimal multistage program. This lab does **not** combine anonymized benchmark product histories from different physical retailers. **The solver may rank below a simple baseline under some assumptions; this outcome must be reported honestly.** Full formulation: [Phase 4 mathematical specification](docs/PHASE4_JOINT_OPTIMIZATION.md); narrated demonstration plan: [recording storyboard](docs/PHASE4_DEMO_STORYBOARD.md) and [narration rehearsal guide](docs/PHASE4_NARRATION.md).
 
-**Acceptance gate:** 42/42 Node tests and static build passed, and all 36/36 actual Chromium checks passed on the feature-branch server: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45087586964. Public Cloudflare deployment must still be verified after merging.
+**Acceptance gate:** 42/42 Node tests and static build passed, and all 36/36 actual Chromium checks passed on the feature-branch server: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45087586964. Live Cloudflare production has since been verified with 36/36 browser checks after merging.
 
 ## FreshTwin v0.4 — Phases 1–3 (preserved prior release): safer decisions and two operating modes
 

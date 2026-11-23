@@ -7,8 +7,8 @@
 - [x] Create accessible Joint Store interface, KPI/constraint plots and exportable daily ledger.
 - [x] `npm run check` passes on feature branch — 42/42 Node regressions and build pass, GitHub run #45087305531.
 - [x] GitHub Actions real Chromium acceptance and 390px responsiveness passes — run #45087586964, 36/36 checks.
-- [ ] Merge PR through protected `main`; verify GitHub build.
-- [ ] Verify public Cloudflare v0.5 and real 24-check production acceptance.
-- [ ] Capture actual navigated demo video and prepare two-page Word discussion consistent with course instructions.
+- [x] Merge PR through protected `main`; verify GitHub build — PR #9, main tests 42/42 PASS.
+- [x] Verify public Cloudflare v0.5 and complete 36-check production acceptance — GitHub run #45088531951 SUCCESS.
+- [x] Capture actual navigated demo video and prepare two-page Word review worksheet consistent with course instructions — run #45088531892; artifact #14780725120, 8 actual-site screenshots, 144.16-s video, two-page DOCX. **Still required:** student's personal writing review and independent submission.
 
 Do not check boxes prematurely. The live app is a reproducible **simulation** with honest limitations, not a physically synchronized retail store.
