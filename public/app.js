@@ -158,7 +158,7 @@ function renderExperiment(){
  $('#syntheticValidation').textContent=syntheticDemandValidation(state.sku,state.seed,[.55,.85,1.15],6).map(r=>`Capacity ${fmt(r.stockFactor,2)}×: ${pct(r.stockoutRate)} censored · raw MAE ${fmt(r.naiveMAE,2)} / adjusted MAE ${fmt(r.correctedMAE,2)}`).join(' | ')+' · Controlled synthetic known-demand diagnostic only; not actual benchmark lost-demand recovery.';
 }
 function settingsFromControls(){state.settings={days:28,demandMultiplier:Number($('#demandRange').value)/100,leadTime:Number($('#leadRange').value),shelfLifeOffset:Number($('#shelfRange').value),shortageWeight:Number($('#shortageRange').value)/10};state.trials=Number($('#trialRange').value);$('#demandValue').textContent=Math.round(state.settings.demandMultiplier*100)+'%';$('#leadValue').textContent=state.settings.leadTime+' day'+(state.settings.leadTime===1?'':'s');$('#shelfValue').textContent=(state.settings.shelfLifeOffset>0?'+':'')+state.settings.shelfLifeOffset+' days';$('#shortageValue').textContent=state.settings.shortageWeight.toFixed(1)+'×';$('#trialValue').textContent=state.trials+' runs';}
-const viewData={overview:['Operations overview','OPERATIONS INTELLIGENCE · DIGITAL TWIN','Fresh food, smarter decisions.','A transparent simulation and optimization workbench for stockout-aware demand and perishable inventory.'],inventory:['Inventory twin','SIMULATION ENGINE · DAILY STATE','An operational twin you can inspect.','Follow every stock movement through the inventory and expiration model.'],experiments:['Decision lab','STOCHASTIC OPTIMIZATION · POLICY BENCHMARK','Decisions, evaluated under uncertainty.','Compare replenishment policies using seeded Monte Carlo trials and measurable outcomes.'],methodology:['Methodology','RESEARCH DESIGN · OPEN ASSUMPTIONS','Built to be scrutinized.','Audit the mathematical assumptions, dataset provenance and validation scope.']};
+const viewData={overview:['Operations overview','OPERATIONS INTELLIGENCE · DIGITAL TWIN','Fresh food, smarter decisions.','A transparent simulation and optimization workbench for stockout-aware demand and perishable inventory.'],inventory:['Inventory twin','SIMULATION ENGINE · DAILY STATE','An operational twin you can inspect.','Follow every stock movement through the inventory and expiration model.'],experiments:['Decision lab','STOCHASTIC OPTIMIZATION · POLICY BENCHMARK','Decisions, evaluated under uncertainty.','Compare replenishment policies using seeded Monte Carlo trials and measurable outcomes.'],joint:['Joint store lab','COUPLED PROCUREMENT · SHARED STORE','One store. Ten vegetable decisions.','Evaluate capacity-and-budget-constrained FEFO replenishment across one coherent synthetic store.'],methodology:['Methodology','RESEARCH DESIGN · OPEN ASSUMPTIONS','Built to be scrutinized.','Audit the mathematical assumptions, dataset provenance and validation scope.']};
 function navigate(view){if(!viewData[view])view='overview';$$('.view').forEach(el=>el.classList.toggle('active',el.id===view));$$('[data-nav]').forEach(el=>el.classList.toggle('active',el.dataset.nav===view));const [crumb,eyebrow,title,subtitle]=viewData[view];$('#breadcrumb').textContent=crumb;$('#pageEyebrow').textContent=eyebrow;$('#pageTitle').innerHTML=escapeHTML(title).replace(/\.$/,'<span class="heading-dot">.</span>');$('#pageSubtitle').textContent=subtitle;window.location.hash=view;window.scrollTo({top:0,behavior:'instant'});}
 function downloadText(filename,data,type='text/plain'){const blob=new Blob([data],{type});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function csvValue(s){return '"'+String(s).replaceAll('"','""')+'"';}
@@ -287,12 +287,15 @@ function updateVegetable(key,value){
  if(state.mode!=='vegetable')return;
  const next=validateVegetable({...state.sku,[key]:value});
  state.vegOverrides[state.sku.id]=next;state.sku=next;
+  window.dispatchEvent(new CustomEvent('freshtwin:vegetables-updated',{detail:{skus:VEGETABLES.map(x=>state.vegOverrides[x.id]||x)}}));
  if(key==='leadTime')$('#leadRange').value=next.leadTime;
  settingsFromControls();state.day=1;refresh();
 }
 function resetVegetable(){
  if(state.mode!=='vegetable')return;
- delete state.vegOverrides[state.sku.id];selectVegetable(state.sku.id);toast('Vegetable assumptions restored to illustrated defaults.');
+ delete state.vegOverrides[state.sku.id];selectVegetable(state.sku.id);
+  window.dispatchEvent(new CustomEvent('freshtwin:vegetables-updated',{detail:{skus:VEGETABLES.map(x=>state.vegOverrides[x.id]||x)}}));
+  toast('Vegetable assumptions restored to illustrated defaults.');
 }
 function resetScenario(){
  state.seed=42;$('#seedInput').value=42;
