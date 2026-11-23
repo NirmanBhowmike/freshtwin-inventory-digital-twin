@@ -115,6 +115,7 @@ function init(){
  $('#jointNextDay').addEventListener('click',()=>{state.day=Math.min(state.run?.policies[0].timeline.length||21,state.day+1);renderDay();});
  $('#jointDaySlider').addEventListener('input',e=>{state.day=Number(e.target.value);renderDay();});
  $('#jointExport').addEventListener('click',exportResult);$('#jointExportLedger').addEventListener('click',exportLedger);
+ window.addEventListener('freshtwin:vegetables-updated',event=>{const skus=event.detail?.skus;if(!Array.isArray(skus)||skus.length!==10)return;state.source=skus;renderSelections();markDirty();});
  window.addEventListener('hashchange',()=>{if(location.hash==='#joint'&&!state.active){state.active=true;run();}});
  if(location.hash==='#joint'){state.active=true;run();}
 }
