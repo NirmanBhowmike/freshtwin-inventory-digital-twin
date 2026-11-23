@@ -1,13 +1,13 @@
 {
   "name": "freshtwin-inventory-digital-twin",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "description": "Research-oriented digital twin prototype for perishable fresh-food inventory decisions.",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "test": "node --test tests/*.test.js",
-    "check": "node --check public/app.js && node --check public/workspace.js && node --check src/vegetables.js && node --check src/engine.js && node --check src/empirical.js && npm test",
+    "check": "node --check public/app.js && node --check public/workspace.js && node --check public/joint-ui.js && node --check src/vegetables.js && node --check src/joint.js && node --check src/engine.js && node --check src/empirical.js && npm test",
     "build": "node scripts/build.mjs"
   },
   "engines": {

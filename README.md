@@ -1,6 +1,16 @@
 # FreshTwin
 
-## FreshTwin v0.4 — Phases 1–3: safer decisions and two operating modes
+## FreshTwin v0.5 — Phase 4: One store, jointly optimized
+
+**New Joint Store Lab:** ten named vegetables can be managed together in one **illustrative synthetic store** with a shared refrigerated-volume ceiling and one purchasing budget for the entire planning horizon. The three constrained policies are evaluated on matched future-demand paths, with FEFO batch aging, supplier lead times, and explicit terminal inventory valuation.
+
+**Live interface:** navigate to **Joint store lab** for editable budget, capacity, demand intensity, seed, trial count, and SKU selection; auditable volume/capital trajectories; day-by-day stock conservation; empirical Monte Carlo tail risk and confidence intervals; reproducible JSON and CSV. Individual vegetable assumption edits propagate into this scenario.
+
+**Scientific limits:** the coupled decision rule uses a bounded sampled marginal-value heuristic with integer polishing, not a globally optimal multistage program. This lab does **not** combine anonymized benchmark product histories from different physical retailers. **The solver may rank below a simple baseline under some assumptions; this outcome must be reported honestly.** Full formulation: [Phase 4 mathematical specification](docs/PHASE4_JOINT_OPTIMIZATION.md); narrated demonstration plan: [recording storyboard](docs/PHASE4_DEMO_STORYBOARD.md) and [narration rehearsal guide](docs/PHASE4_NARRATION.md).
+
+**Acceptance gate:** 42/42 Node tests and static build passed, and all 36/36 actual Chromium checks passed on the feature-branch server: https://github.com/NirmanBhowmike/freshtwin-inventory-digital-twin/actions/runs/45087586964. Public Cloudflare deployment must still be verified after merging.
+
+## FreshTwin v0.4 — Phases 1–3 (preserved prior release): safer decisions and two operating modes
 
 **Two distinct workspaces:** **Vegetable Demonstration** offers ten named products with editable demand, costs, shelf lives, lead time, opening stock and age mix. **Research Benchmark** retains 865 actual anonymized product IDs and their real normalized histories. No anonymized ID is assigned a vegetable name. Switching modes never rewrites benchmark observations.
 
@@ -26,6 +36,9 @@ FreshTwin is an interactive inventory-research application developed for **INEN-
 - **Research status:** Phases 1–3 complete and technically verified. Phase 4 joint multi-product optimization intentionally not started. Outputs are simulation-based with explicit assumptions; a production browser test does not establish field validity.
 
 ## Product capabilities
+
+- **Joint Store Lab (v0.5):** jointly allocate replenishment among up to ten illustrative vegetables under one total-horizon budget and one conservative storage reservation, comparing three feasible policies on paired simulated demand paths.
+
 
 - Choose **Vegetable Demonstration** to model ten named produce products with editable cost, demand, supplier, shelf life and opening inventory assumptions, or **Research Benchmark** to analyze 865 real anonymized product IDs without inventing their names.
 - Audit the explicit stock-flow and net scenario-cost objective directly on the Methodology page, with cost breakdowns and Monte Carlo convergence diagnostics.

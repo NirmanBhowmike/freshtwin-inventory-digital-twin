@@ -1,4 +1,4 @@
-# FreshTwin v0.4 — Model specification and empirical boundaries
+# FreshTwin — Model specification and empirical boundaries (v0.4 single-SKU + v0.5 joint SKU)
 
 **Research question.** How do sales censoring, inventory age, lead time, and demand uncertainty alter perishable-product replenishment decisions? The current scope is a **single selected SKU per simulation**. Shared storage/budget constraints and substitution are reserved for **Phase 4**, which must not start before the Phase 1–3 validation gate.
 
@@ -73,3 +73,8 @@ Each simulated trial has an independent, deterministic seed and one common deman
 - Products are optimized independently. Joint budget, refrigerated capacity, minimum service constraints, and substitution are deliberately deferred to Phase 4.
 
 **Related documents:** `docs/DATA_SOURCE.md`, `docs/QUALITY_REPORT_V03.md`, `docs/PHASES_1_3_VALIDATION.md`, `PROJECT_STATE.md`.
+## v0.5 extension: shared budget, capacity and coupled perishable ordering
+
+The separately accessible Joint Store Lab extends the v0.4 single-product simulator to a coherent **synthetic store** with ten named vegetables and an all-horizon purchasing budget `B`. It enforces the conservative reserved refrigerated volume `Σ_i v_i(on-hand + outstanding + new orders) ≤ C` after every day's FEFO activity, and `Σ_{days,SKUs} cost_i × newOrders_i ≤ B`. All three baseline and coupled policies are assessed on the same generated future-demand paths in each paired trial. Nonnegative integer orders, per-SKU life and lead time, stock conservation, and terminal inventory/pipeline credits are checked.
+
+The new coupled allocator samples SKU-specific forward demand, evaluates FEFO candidate cost curves and greedily selects positive integer marginal improvements subject to both constraints. It is a **heuristic approximate selection** with an independent exhaustive oracle only for reduced finite test instances; it is not a claim of global multistage optimum. Store scenarios and economic inputs are illustrative, not measured from Dingdong's anonymous benchmark. [Full model, assumption, verification and uncertainty documentation](PHASE4_JOINT_OPTIMIZATION.md).

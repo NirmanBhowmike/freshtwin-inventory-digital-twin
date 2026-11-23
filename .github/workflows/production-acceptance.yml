@@ -23,8 +23,8 @@ jobs:
         run: |
           ready=0
           for i in $(seq 1 20); do
-            if curl --fail --silent --show-error --location --compressed --max-time 20 "$FRESHTWIN_URL" | grep -q 'Version 0.4.0'; then
-              echo "FreshTwin 0.4.0 is available on the public Cloudflare endpoint."
+            if curl --fail --silent --show-error --location --compressed --max-time 20 "$FRESHTWIN_URL" | grep -q 'Version 0.5.0'; then
+              echo "FreshTwin 0.5.0 is available on the public Cloudflare endpoint."
               ready=1
               break
             fi
@@ -38,7 +38,9 @@ jobs:
           npm install --no-save playwright
           npx playwright install --with-deps chromium
       - name: Run complete 24-check acceptance against live production
-        run: node scripts/browser_acceptance.mjs
+        run: |
+          node scripts/browser_acceptance.mjs
+          node scripts/joint_browser_acceptance.mjs
       - name: Preserve screenshots and measured browser outcomes
         if: always()
         uses: actions/upload-artifact@v4
