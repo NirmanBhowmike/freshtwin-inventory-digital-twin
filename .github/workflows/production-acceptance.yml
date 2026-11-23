@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Await public version 0.4.0 after Cloudflare Git deployment
+      - name: Await public FreshTwin v0.5.0 after Cloudflare Git deployment
         run: |
           ready=0
           for i in $(seq 1 20); do
@@ -37,11 +37,11 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run complete 24-check acceptance against live production
+      - name: Run complete 36-check acceptance against live production
         run: |
           node scripts/browser_acceptance.mjs
           node scripts/joint_browser_acceptance.mjs
-      - name: Preserve screenshots and measured browser outcomes
+      - name: Preserve measured browser acceptance results
         if: always()
         uses: actions/upload-artifact@v4
         with:

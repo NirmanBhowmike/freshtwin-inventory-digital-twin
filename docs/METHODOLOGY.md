@@ -1,6 +1,6 @@
 # FreshTwin — Model specification and empirical boundaries (v0.4 single-SKU + v0.5 joint SKU)
 
-**Research question.** How do sales censoring, inventory age, lead time, and demand uncertainty alter perishable-product replenishment decisions? The current scope is a **single selected SKU per simulation**. Shared storage/budget constraints and substitution are reserved for **Phase 4**, which must not start before the Phase 1–3 validation gate.
+**Research question.** How do sales censoring, inventory age, lead time, and demand uncertainty alter perishable-product replenishment decisions? The platform has **two implemented decision regimes**: a v0.4 single-selected-SKU simulator and a v0.5 multi-vegetable joint-store simulator. The latter jointly constrains total purchasing and reserved cold-storage volume; cross-product substitution is not implemented.
 
 ## Separate data-generating settings
 
@@ -70,10 +70,11 @@ Each simulated trial has an independent, deterministic seed and one common deman
 - Cost-basis terminal valuation is one consistent choice, not necessarily an economic resale value.
 - Supplier lead time can be adjusted deterministically; stochastic supplier lead-time distributions are not yet calibrated.
 - The scenario search is an approximate single-order optimizer. It has no global optimality certificate for the multi-period inventory problem.
-- Products are optimized independently. Joint budget, refrigerated capacity, minimum service constraints, and substitution are deliberately deferred to Phase 4.
+- Single-SKU modes optimize products independently; the **implemented** Joint Store Lab couples ten synthetic SKUs through a common purchasing budget and refrigerated-capacity limit. Minimum service constraints and cross-SKU substitution remain future research.
 
 **Related documents:** `docs/DATA_SOURCE.md`, `docs/QUALITY_REPORT_V03.md`, `docs/PHASES_1_3_VALIDATION.md`, `PROJECT_STATE.md`.
-## v0.5 extension: shared budget, capacity and coupled perishable ordering
+
+## Implemented v0.5: shared budget, capacity and coupled perishable ordering
 
 The separately accessible Joint Store Lab extends the v0.4 single-product simulator to a coherent **synthetic store** with ten named vegetables and an all-horizon purchasing budget `B`. It enforces the conservative reserved refrigerated volume `Σ_i v_i(on-hand + outstanding + new orders) ≤ C` after every day's FEFO activity, and `Σ_{days,SKUs} cost_i × newOrders_i ≤ B`. All three baseline and coupled policies are assessed on the same generated future-demand paths in each paired trial. Nonnegative integer orders, per-SKU life and lead time, stock conservation, and terminal inventory/pipeline credits are checked.
 
