@@ -43,7 +43,10 @@ function selectStoreSku(id){
  state.sku=found;state.loadedCSV=null;state.day=1;$('#skuSelect').value=id;$('#importMessage').textContent='';refresh();
 }
 function renderStoreGrid(){
- if(state.mode==='vegetable'){
+ const vegetableMode=state.mode==='vegetable';
+ $('#storeBoardTitle').textContent=vegetableMode?'Explore vegetable inventory scenarios':'Explore observed product histories';
+ $('#storeBoardDescription').textContent=vegetableMode?'Select a vegetable to examine illustrative demand, shelf life, inventory and replenishment decisions.':'Select an actual anonymized benchmark product to inspect its historical sales and evaluate inventory decisions.';
+ if(vegetableMode){
    $('#storeCountBadge').textContent='10 NAMED VEGETABLES · ILLUSTRATIVE';
    $('#storeGrid').innerHTML=VEGETABLES.map(v=>{
      const sk=state.vegOverrides[v.id]||v,active=sk.id===state.sku.id;
